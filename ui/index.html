@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arachne scandens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Cyanotype specimen plate: one visual world, single theme by choice.
+     Layout: a large replay plate with the gait diagram as its timeline; a narrow column of training instruments beside it. */
+  --prussian: #0c2340;   /* page */
+  --deep: #081a31;       /* wells, canvas ground */
+  --wash: #15355b;       /* raised fills */
+  --line: #2b507d;       /* hairlines */
+  --chalk: #eaf2f8;      /* primary ink */
+  --mist: #9db7cf;       /* secondary ink */
+  --sodium: #ffcf3a;     /* accent: a foot on the ground, the present moment */
+  --lichen: #8fe3c0;     /* semantic: climbed */
+  --ember: #ff8562;      /* semantic: fell */
+  --display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--prussian);
+  background-image: radial-gradient(120% 90% at 30% 0%, #12305a 0%, var(--prussian) 55%, #091b33 100%);
+  background-attachment: fixed;
+  color: var(--chalk);
+  font: 400 15px/1.5 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 1480px; margin: 0 auto; padding: 28px clamp(16px, 3vw, 40px) 48px; display: flex; flex-direction: column; gap: 22px; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.label { font: 500 11px/1.3 var(--mono); letter-spacing: .09em; text-transform: uppercase; color: var(--mist); }
+
+/* ---------- masthead ---------- */
+.mast { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px 40px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.mast h1 { font: italic 400 clamp(40px, 5.2vw, 68px)/.95 var(--display); margin: 6px 0 8px; letter-spacing: -.01em; text-wrap: balance; }
+.mast p { margin: 0; color: var(--mist); max-width: 52ch; }
+.figures { display: flex; flex-wrap: wrap; gap: 14px 34px; }
+.figure .num { font: 400 34px/1 var(--display); display: block; margin-top: 6px; }
+.figure .num small { font: 400 13px var(--mono); color: var(--mist); margin-left: 3px; }
+
+/* ---------- grid ---------- */
+.grid { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr); gap: 22px; align-items: start; }
+.col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+@media (max-width: 980px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.panel { border: 1px solid var(--line); background: rgba(8, 26, 49, .55); }
+.panel > header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 14px; padding: 12px 16px 0; }
+.panel h2 { font: 400 22px/1.1 var(--display); margin: 0; }
+.panel .note { color: var(--mist); font-size: 13px; margin: 0; }
+.panel .body { padding: 10px 16px 16px; }
+
+/* ---------- plate ---------- */
+.plate { position: relative; border: 1px solid var(--line); background: var(--deep); }
+.plate::after { content: ""; position: absolute; inset: 6px; border: 1px solid rgba(157, 183, 207, .22); pointer-events: none; }
+#stage { display: block; width: 100%; height: clamp(340px, 56vh, 640px); cursor: grab; touch-action: pan-y; }
+#stage:active { cursor: grabbing; }
+.plate .tl, .plate .tr, .plate .bl, .plate .br { position: absolute; z-index: 2; }
+.plate .tl { top: 18px; left: 20px; }
+.plate .tr { top: 18px; right: 20px; text-align: right; }
+.plate .bl { bottom: 18px; left: 20px; }
+.plate .br { bottom: 18px; right: 20px; display: flex; gap: 6px; }
+.stamp { display: inline-flex; align-items: center; gap: 8px; font: 500 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; padding: 5px 10px; border: 1px solid currentColor; }
+.stamp::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.stamp.climbed { color: var(--lichen); } .stamp.fell { color: var(--ember); } .stamp.timeout, .stamp.none { color: var(--mist); }
+.readout { font: 400 12px/1.7 var(--mono); color: var(--mist); font-variant-numeric: tabular-nums; }
+.readout b { color: var(--chalk); font-weight: 500; }
+.legend { display: flex; flex-direction: column; gap: 3px; font: 400 11.5px var(--mono); color: var(--mist); }
+.legend i { display: inline-block; width: 18px; margin-right: 8px; vertical-align: middle; }
+.legend .k-foot { height: 8px; width: 8px; margin-left: 5px; margin-right: 13px; border-radius: 50%; background: var(--sodium); }
+.legend .k-drag { border-top: 1px dashed var(--chalk); }
+.legend .k-cmd { border-top: 2px solid var(--sodium); }
+
+/* ---------- controls ---------- */
+button, .seg label { font: 500 12px var(--mono); letter-spacing: .04em; color: var(--chalk); background: transparent; border: 1px solid var(--line); padding: 7px 11px; cursor: pointer; transition: background .15s, border-color .15s; }
+button:hover, .seg label:hover { border-color: var(--mist); background: rgba(157, 183, 207, .08); }
+button:focus-visible, .seg input:focus-visible + label, input[type=range]:focus-visible, canvas:focus-visible { outline: 2px solid var(--sodium); outline-offset: 2px; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 12px 16px; border: 1px solid var(--line); border-top: 0; background: rgba(8, 26, 49, .55); }
+.seg { display: inline-flex; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label + input + label { border-left: 0; }
+.seg input:checked + label { background: var(--chalk); color: var(--prussian); border-color: var(--chalk); }
+.levels { display: flex; flex-wrap: wrap; gap: 6px; }
+.levels button { display: inline-flex; align-items: center; gap: 7px; }
+.levels button[aria-pressed=true] { background: var(--chalk); color: var(--prussian); border-color: var(--chalk); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mist); }
+.dot.climbed { background: var(--lichen); } .dot.fell { background: var(--ember); }
+.spacer { flex: 1; }
+
+/* ---------- gait ---------- */
+#gait { display: block; width: 100%; height: 190px; cursor: ew-resize; touch-action: none; }
+
+/* ---------- anatomy ---------- */
+.anatomy { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(200px, .9fr); gap: 8px 28px; align-items: center; }
+#anatomy { display: block; width: 100%; height: 250px; }
+.facts { margin: 0; display: grid; grid-template-columns: 1fr max-content; gap: 0; font-size: 13.5px; }
+.facts dt { color: var(--mist); padding: 6px 0; border-bottom: 1px solid var(--line); }
+.facts dd { margin: 0; padding: 6px 0 6px 16px; border-bottom: 1px solid var(--line); font: 500 13px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.facts dt:last-of-type, .facts dd:last-of-type { border-bottom: 0; }
+@media (max-width: 640px) { .anatomy { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- instruments ---------- */
+#stairs { display: block; width: 100%; height: 250px; }
+.chart { display: block; width: 100%; height: 96px; }
+.chart-row + .chart-row { margin-top: 12px; }
+.chart-head { display: flex; justify-content: space-between; align-items: baseline; }
+.chart-head .v { font: 500 13px var(--mono); font-variant-numeric: tabular-nums; }
+.scrub { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--line); }
+input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; height: 18px; background: transparent; margin: 0; }
+input[type=range]::-webkit-slider-runnable-track { height: 1px; background: var(--mist); }
+input[type=range]::-moz-range-track { height: 1px; background: var(--mist); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 9px; height: 18px; margin-top: -9px; background: var(--sodium); border: 0; border-radius: 0; cursor: ew-resize; }
+input[type=range]::-moz-range-thumb { width: 9px; height: 18px; background: var(--sodium); border: 0; border-radius: 0; cursor: ew-resize; }
+.ledger { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 5px 12px; align-items: center; font: 400 12px var(--mono); font-variant-numeric: tabular-nums; }
+.ledger .name { color: var(--mist); }
+.ledger .track { position: relative; height: 10px; }
+.ledger .track::before { content: ""; position: absolute; left: var(--zero); top: -3px; bottom: -3px; border-left: 1px solid var(--line); }
+.ledger .fill { position: absolute; top: 0; bottom: 0; }
+.ledger .pos { background: var(--chalk); } .ledger .neg { background: repeating-linear-gradient(135deg, var(--mist) 0 2px, transparent 2px 4px); border: 1px solid var(--mist); }
+.ledger .val { text-align: right; }
+.empty { color: var(--mist); font-size: 14px; padding: 6px 0; }
+.empty code { font: 400 12.5px var(--mono); color: var(--chalk); background: var(--wash); padding: 2px 6px; white-space: nowrap; }
+footer { color: var(--mist); font: 400 12px var(--mono); display: flex; flex-wrap: wrap; gap: 6px 24px; border-top: 1px solid var(--line); padding-top: 14px; }
+@media (max-width: 560px) { .plate .legend, .plate .tr { display: none; } #stage { height: 340px; } .figure .num { font-size: 28px; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <section class="mast">
+    <div>
+      <div class="label" id="runline">run</div>
+      <h1>Arachne scandens</h1>
+      <p>A simulated spider with eight legs and 24 motors, teaching itself to climb stairs in Genesis. Drag the plate to walk around it.</p>
+    </div>
+    <div class="figures">
+      <div class="figure"><span class="label">Training iteration</span><span class="num mono" id="f-iter">0</span></div>
+      <div class="figure"><span class="label">Stairs being practised</span><span class="num" id="f-step">0<small>cm</small></span></div>
+      <div class="figure"><span class="label">Staircases finished</span><span class="num" id="f-succ">0<small>%</small></span></div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <div class="col">
+      <div>
+        <div class="plate">
+          <canvas id="stage" tabindex="0" aria-label="3D replay of the spider on the stairs. Drag to orbit."></canvas>
+          <div class="tl"><span class="stamp none" id="stamp">no replay</span><div class="readout" id="readout" style="margin-top:10px"></div></div>
+          <div class="tr label" id="platecap"></div>
+          <div class="bl legend">
+            <span><i class="k-foot"></i>foot on the ground</span>
+            <span><i class="k-drag"></i>dragline: path of the body</span>
+            <span><i class="k-cmd"></i>direction it was told to walk</span>
+          </div>
+          <div class="br"><button id="zoom-out" aria-label="Zoom out">&minus;</button><button id="zoom-in" aria-label="Zoom in">+</button></div>
+        </div>
+        <div class="bar">
+          <button id="play" aria-pressed="true">Pause</button>
+          <div class="seg" role="radiogroup" aria-label="Staircase direction">
+            <input type="radio" name="tile" id="tile-ascend" value="ascend" checked><label for="tile-ascend">Climb up</label>
+            <input type="radio" name="tile" id="tile-descend" value="descend"><label for="tile-descend">Climb down</label>
+          </div>
+          <div class="levels" id="levels" aria-label="Step height"></div>
+          <span class="spacer"></span>
+          <div class="seg" role="radiogroup" aria-label="Playback speed">
+            <input type="radio" name="speed" id="sp-25" value="0.25"><label for="sp-25">&frac14;&times;</label>
+            <input type="radio" name="speed" id="sp-1" value="1" checked><label for="sp-1">1&times;</label>
+            <input type="radio" name="speed" id="sp-2" value="2"><label for="sp-2">2&times;</label>
+          </div>
+        </div>
+      </div>
+
+      <section class="panel">
+        <header><h2>Footfall</h2><p class="note">A bar means that foot is on the ground. Drag to move through the replay.</p></header>
+        <div class="body"><canvas id="gait" tabindex="0" aria-label="Gait diagram and timeline"></canvas></div>
+      </section>
+
+      <section class="panel">
+        <header><h2>Anatomy</h2><p class="note">Seen from above, head to the right. Feet light up as they land.</p></header>
+        <div class="body anatomy">
+          <canvas id="anatomy" aria-label="Top view of the spider with leg names"></canvas>
+          <dl class="facts" id="facts"></dl>
+        </div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel">
+        <header><h2>Where the colony stands</h2><p class="note" id="stairs-note">Share of spiders practising each step height</p></header>
+        <div class="body"><canvas id="stairs"></canvas><div class="empty" id="stairs-empty" hidden></div></div>
+        <div class="scrub"><span class="label">Iteration</span><input type="range" id="iter" min="0" max="0" value="0" aria-label="Training iteration"><span class="mono" id="iter-val" style="min-width:5ch;text-align:right">0</span></div>
+      </section>
+
+      <section class="panel">
+        <header><h2>Learning curves</h2><p class="note">Yellow line marks the iteration above</p></header>
+        <div class="body" id="charts"></div>
+      </section>
+
+      <section class="panel">
+        <header><h2>Reward ledger</h2><p class="note">What it earns and pays per second</p></header>
+        <div class="body"><div class="ledger" id="ledger"></div></div>
+      </section>
+    </div>
+  </div>
+
+  <footer><span id="foot-a"></span><span id="foot-b"></span><span>genesis-world &middot; rsl-rl PPO</span></footer>
+</div>
+
+<script>
+"use strict";
+let DATA = /*__DATA__*/null;
+
+const C = { prussian: "#0c2340", deep: "#081a31", wash: "#15355b", line: "#2b507d", chalk: "#eaf2f8", mist: "#9db7cf", sodium: "#ffcf3a", lichen: "#8fe3c0", ember: "#ff8562" };
+const $ = (id) => document.getElementById(id);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const REWARD_NAMES = {
+  tracking_lin_vel: "walking at the asked speed", forward_progress: "making headway", tracking_ang_vel: "holding its heading", feet_air_time: "taking real steps",
+  lin_vel_z: "bouncing", ang_vel_xy: "wobbling", orientation: "tilting", base_height: "riding too high or low",
+  feet_stumble: "kicking the risers", feet_slip: "feet sliding", collision: "knees on the stairs", torques: "motor effort", dof_acc: "jerky joints",
+  action_rate: "twitchy commands", dof_pos_limits: "joints at their stops", termination: "falling",
+};
+
+/* ================================================================ canvas helpers */
+function fit(canvas) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), r = canvas.getBoundingClientRect();
+  const w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+  if (canvas.width !== w * dpr || canvas.height !== h * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return [ctx, w, h];
+}
+const cm = (h) => String(Number((h * 100).toFixed(1)));
+const lerp = (a, b, t) => a + (b - a) * t;
+const mix = (c1, c2, t) => { const p = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)); const a = p(c1), b = p(c2); return `rgb(${a.map((v, i) => Math.round(lerp(v, b[i], t))).join(",")})`; };
+
+/* ================================================================ spider kinematics */
+function qrot(q, v) { // q = [w, x, y, z]
+  const [w, x, y, z] = q, [vx, vy, vz] = v;
+  const tx = 2 * (y * vz - z * vy), ty = 2 * (z * vx - x * vz), tz = 2 * (x * vy - y * vx);
+  return [vx + w * tx + (y * tz - z * ty), vy + w * ty + (z * tx - x * tz), vz + w * tz + (x * ty - y * tx)];
+}
+function legPoints(robot, pos, quat, q) {
+  // returns for each of 8 legs the world positions [hip, knee, ankle, foot]
+  const [a, b] = robot.mount_ellipse, cl = robot.coxa[0], fl = robot.femur[0], tl = robot.tibia[0];
+  const out = [];
+  for (let s = 0; s < 2; s++) for (let i = 0; i < 4; i++) {
+    const sign = s === 0 ? 1 : -1, ang = sign * robot.mount_angles_deg[i] * Math.PI / 180, j = (s * 4 + i) * 3;
+    const yaw = ang - sign * q[j], dx = Math.cos(yaw), dy = Math.sin(yaw), f = q[j + 1], t = f + q[j + 2];
+    const p0 = [a * Math.cos(ang), b * Math.sin(ang), 0];
+    const p1 = [p0[0] + cl * dx, p0[1] + cl * dy, 0];
+    const p2 = [p1[0] + fl * Math.cos(f) * dx, p1[1] + fl * Math.cos(f) * dy, -fl * Math.sin(f)];
+    const p3 = [p2[0] + tl * Math.cos(t) * dx, p2[1] + tl * Math.cos(t) * dy, p2[2] - tl * Math.sin(t)];
+    out.push([p0, p1, p2, p3].map((p) => { const w = qrot(quat, p); return [w[0] + pos[0], w[1] + pos[1], w[2] + pos[2]]; }));
+  }
+  return out;
+}
+function ellipsoid(center, radii, n = 9) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) for (let k = 0; k < 2 * n; k++) {
+    const th = Math.PI * i / n, ph = Math.PI * k / n;
+    pts.push([center[0] + radii[0] * Math.sin(th) * Math.cos(ph), center[1] + radii[1] * Math.sin(th) * Math.sin(ph), center[2] + radii[2] * Math.cos(th)]);
+  }
+  return pts;
+}
+function hull(pts) { // 2D convex hull, monotone chain
+  pts = pts.slice().sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const p of pts) { while (lo.length > 1 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (const p of pts.reverse()) { while (up.length > 1 && cross(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+
+/* ================================================================ state */
+const S = { tile: "ascend", level: 0, roll: null, t: 0, playing: !reduceMotion, speed: 1, hold: 0,
+  cam: { yaw: -2.2, pitch: 0.52, dist: 2.1, target: [0, 0, 0] }, iterIdx: 0, follow: true, feet: null };
+
+function terrainOf() { return DATA.meta.terrain; }
+function stairZ(kind, level, cheb) { // world height of the tile at Chebyshev distance from its centre
+  const T = terrainOf(), h = T.step_heights[level];
+  const k = Math.max(0, Math.min(T.n_steps, Math.ceil((cheb - T.platform_half) / T.step_depth - 1e-6)));
+  return kind === "ascend" ? (k - T.n_steps) * h : (T.n_steps - k) * h;
+}
+
+function pickRoll() {
+  const rolls = DATA.replay ? DATA.replay.rollouts : [];
+  S.roll = rolls.find((r) => r.tile === S.tile && r.level === S.level) || null;
+  S.t = 0; S.hold = 0; S.feet = null;
+  if (S.roll) {
+    const R = DATA.meta.robot;
+    S.feet = S.roll.pos.map((p, i) => legPoints(R, p, S.roll.quat[i], S.roll.q[i]).map((l) => l[3]));
+    S.cam.target = S.roll.pos[0].slice();
+  } else {
+    S.cam.target = [0, 0, stairZ(S.tile, S.level, 0) + 0.1];
+  }
+  renderLevels(); drawGait();
+}
+function frameAt(t) {
+  const r = S.roll, n = r.pos.length, x = Math.max(0, Math.min(n - 1, t / DATA.replay.frame_dt));
+  const i = Math.min(n - 2, Math.floor(x)), u = n > 1 ? x - i : 0, j = Math.min(n - 1, i + 1), ii = Math.max(0, i);
+  const L = (A) => A[ii].map((v, k) => lerp(v, A[j][k], u));
+  let qa = r.quat[ii], qb = r.quat[j];
+  if (qa[0] * qb[0] + qa[1] * qb[1] + qa[2] * qb[2] + qa[3] * qb[3] < 0) qb = qb.map((v) => -v);
+  let quat = qa.map((v, k) => lerp(v, qb[k], u)); const nn = Math.hypot(...quat); quat = quat.map((v) => v / nn);
+  return { pos: L(r.pos), quat, q: L(r.q), contact: r.contact[u < 0.5 ? ii : j], idx: u < 0.5 ? ii : j };
+}
+const duration = () => (S.roll ? (S.roll.pos.length - 1) * DATA.replay.frame_dt : 0);
+
+/* ================================================================ 3D plate */
+function drawStage() {
+  const [ctx, W, H] = fit($("stage"));
+  ctx.clearRect(0, 0, W, H);
+  if (!DATA) return;
+  const T = terrainOf(), R = DATA.meta.robot, cam = S.cam;
+  let fr;
+  if (S.roll) fr = frameAt(S.t);
+  else { // no replay yet: the default stance, standing on the spawn platform
+    const z0 = stairZ(S.tile, S.level, 0), dp = R.default_pose, q = [];
+    for (let i = 0; i < 8; i++) q.push(dp.coxa, dp.femur, dp.tibia);
+    fr = { pos: [0, 0, z0 + 0.154], quat: [1, 0, 0, 0], q, contact: 255, idx: 0 };
+  }
+  for (let k = 0; k < 3; k++) cam.target[k] += (fr.pos[k] - cam.target[k]) * (S.playing ? 0.06 : 0.25);
+
+  const cp = Math.cos(cam.pitch), eye = [cam.target[0] + cam.dist * cp * Math.cos(cam.yaw), cam.target[1] + cam.dist * cp * Math.sin(cam.yaw), cam.target[2] + cam.dist * Math.sin(cam.pitch)];
+  const f = [cam.target[0] - eye[0], cam.target[1] - eye[1], cam.target[2] - eye[2]].map((v) => v / cam.dist);
+  let r = [f[1], -f[0], 0]; const rl = Math.hypot(r[0], r[1]); r = [r[0] / rl, r[1] / rl, 0];
+  const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+  const F = Math.min(W, H * 1.5) * 0.95;
+  const P = (p) => { const d = [p[0] - eye[0], p[1] - eye[1], p[2] - eye[2]];
+    const z = Math.max(0.05, d[0] * f[0] + d[1] * f[1] + d[2] * f[2]);
+    return [W / 2 + F * (d[0] * r[0] + d[1] * r[1]) / z, H * 0.54 - F * (d[0] * u[0] + d[1] * u[1] + d[2] * u[2]) / z, z]; };
+
+  /* ---- terrain: square rings, back-face culled risers, painter-sorted ---- */
+  const half = T.tile_size / 2, n = T.n_steps, quads = [];
+  const zOf = (k) => stairZ(S.tile, S.level, k === 0 ? 0 : T.platform_half + (k - 0.5) * T.step_depth);
+  const zs = []; for (let k = 0; k <= n; k++) zs.push(zOf(k));
+  const zLo = Math.min(...zs), zHi = Math.max(...zs), shade = (z) => (zHi > zLo ? (z - zLo) / (zHi - zLo) : 0.5);
+  for (let k = 0; k <= n; k++) {
+    const ri = k === 0 ? 0 : T.platform_half + (k - 1) * T.step_depth, ro = k === n ? half : T.platform_half + k * T.step_depth, z = zs[k];
+    if (k === 0) quads.push({ pts: [[-ro, -ro, z], [ro, -ro, z], [ro, ro, z], [-ro, ro, z]], top: true, z });
+    else for (const [ax, sg] of [[0, 1], [0, -1], [1, 1], [1, -1]]) { // four trapezoids of the annulus
+      const m = (a, b) => (ax === 0 ? [sg * a, b, z] : [b, sg * a, z]);
+      quads.push({ pts: [m(ri, -ri), m(ro, -ro), m(ro, ro), m(ri, ri)], top: true, z });
+    }
+    if (k < n) { // riser between ring k and k+1 at radius ro
+      const za = zs[k], zb = zs[k + 1], up = zb > za; // up: wall faces the centre; down: faces outward
+      for (const [ax, sg] of [[0, 1], [0, -1], [1, 1], [1, -1]]) {
+        const m = (b, z) => (ax === 0 ? [sg * ro, b, z] : [b, sg * ro, z]);
+        const nrm = ax === 0 ? [up ? -sg : sg, 0, 0] : [0, up ? -sg : sg, 0], c = ax === 0 ? [sg * ro, 0, (za + zb) / 2] : [0, sg * ro, (za + zb) / 2];
+        if (nrm[0] * (eye[0] - c[0]) + nrm[1] * (eye[1] - c[1]) <= 0) continue;
+        quads.push({ pts: [m(-ro, za), m(ro, za), m(ro, zb), m(-ro, zb)], top: false, z: (za + zb) / 2 });
+      }
+    }
+  }
+  for (const q of quads) { q.s = q.pts.map(P); q.depth = q.s.reduce((a, p) => a + p[2], 0) / 4; }
+  quads.sort((a, b) => b.depth - a.depth);
+  ctx.lineJoin = "round";
+  for (const q of quads) {
+    ctx.beginPath(); q.s.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath();
+    ctx.fillStyle = q.top ? mix("#0a2140", "#1c467a", shade(q.z)) : mix("#06162b", "#12325a", shade(q.z));
+    ctx.fill(); ctx.strokeStyle = "rgba(234,242,248,.34)"; ctx.lineWidth = 1; ctx.stroke();
+  }
+
+  /* ---- commanded direction, dragline, footprints ---- */
+  const groundAt = (x, y) => stairZ(S.tile, S.level, Math.max(Math.abs(x), Math.abs(y)));
+  if (S.roll) {
+    const hd = S.roll.heading, p0 = S.roll.pos[0], reach = half * 0.92;
+    ctx.strokeStyle = C.sodium; ctx.lineWidth = 2; ctx.setLineDash([]);
+    for (let d = reach - 0.5; d <= reach; d += 0.25) { // three chevrons at the edge of the tile
+      const cx = p0[0] + Math.cos(hd) * d, cy = p0[1] + Math.sin(hd) * d, w = 0.13;
+      const tip = [cx + Math.cos(hd) * w, cy + Math.sin(hd) * w], a = [cx - Math.sin(hd) * w, cy + Math.cos(hd) * w], b = [cx + Math.sin(hd) * w, cy - Math.cos(hd) * w];
+      const pr = (p) => P([p[0], p[1], groundAt(p[0], p[1]) + 0.004]);
+      const A = pr(a), Tt = pr(tip), B = pr(b);
+      ctx.globalAlpha = 0.35 + 0.3 * ((d - reach + 0.5) / 0.5);
+      ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(Tt[0], Tt[1]); ctx.lineTo(B[0], B[1]); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.setLineDash([4, 4]); ctx.strokeStyle = "rgba(234,242,248,.75)"; ctx.lineWidth = 1.2;
+    for (let i = 0; i <= fr.idx; i++) { const p = P(S.roll.pos[i]); i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
+    const pn = P(fr.pos); ctx.lineTo(pn[0], pn[1]); ctx.stroke(); ctx.setLineDash([]);
+    const win = Math.round(5 / DATA.replay.frame_dt); // footprints from the last five seconds
+    for (let i = Math.max(1, fr.idx - win); i <= fr.idx; i++) for (let l = 0; l < 8; l++) {
+      const now = (S.roll.contact[i] >> l) & 1, was = (S.roll.contact[i - 1] >> l) & 1;
+      if (now && !was) { const p = P(S.feet[i][l]), age = (fr.idx - i) / win, rad = Math.max(1.5, F * 0.02 / p[2]);
+        ctx.beginPath(); ctx.ellipse(p[0], p[1], rad, rad * Math.sin(cam.pitch), 0, 0, 7); ctx.strokeStyle = `rgba(255,207,58,${0.75 * (1 - age)})`; ctx.lineWidth = 1.2; ctx.stroke(); }
+    }
+  }
+
+  /* ---- spider: legs behind the body, body, legs in front ---- */
+  const legs = legPoints(R, fr.pos, fr.quat, fr.q).map((pts, l) => ({ s: pts.map(P), l }));
+  const bodyC = P(fr.pos);
+  const drawLeg = (leg) => {
+    const s = leg.s, px = (m, z) => Math.max(1.2, F * m / z), down = (fr.contact >> leg.l) & 1;
+    ctx.lineCap = "round"; ctx.strokeStyle = C.chalk;
+    [[0, 1, R.coxa[1]], [1, 2, R.femur[1]], [2, 3, R.tibia[1]]].forEach(([a, b, rad]) => {
+      ctx.beginPath(); ctx.moveTo(s[a][0], s[a][1]); ctx.lineTo(s[b][0], s[b][1]); ctx.lineWidth = px(rad * 2, (s[a][2] + s[b][2]) / 2); ctx.stroke(); });
+    for (const k of [1, 2]) { ctx.beginPath(); ctx.arc(s[k][0], s[k][1], px(0.017, s[k][2]), 0, 7); ctx.fillStyle = C.deep; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = C.chalk; ctx.stroke(); }
+    const fr_ = px(R.foot_radius * 1.25, s[3][2]);
+    ctx.beginPath(); ctx.arc(s[3][0], s[3][1], fr_, 0, 7); ctx.fillStyle = down ? C.sodium : C.deep; ctx.fill(); ctx.lineWidth = 1.3; ctx.strokeStyle = down ? C.sodium : C.chalk; ctx.stroke();
+  };
+  const blob = (center, radii) => {
+    const world = ellipsoid([0, 0, 0], radii).map((p) => { const w = qrot(fr.quat, [p[0] + center[0], p[1] + center[1], p[2] + center[2]]); return P([w[0] + fr.pos[0], w[1] + fr.pos[1], w[2] + fr.pos[2]]); });
+    const hl = hull(world); ctx.beginPath(); hl.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath();
+    ctx.fillStyle = "#0a2242"; ctx.fill(); ctx.strokeStyle = C.chalk; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.strokeStyle = "rgba(234,242,248,.4)"; ctx.lineWidth = 1; // two meridians give it volume
+    for (const plane of [0, 1]) { ctx.beginPath(); for (let i = 0; i <= 32; i++) { const a = i / 32 * 2 * Math.PI;
+      const loc = plane === 0 ? [radii[0] * Math.cos(a), 0, radii[2] * Math.sin(a)] : [0, radii[1] * Math.cos(a), radii[2] * Math.sin(a)];
+      const w = qrot(fr.quat, [loc[0] + center[0], loc[1] + center[1], loc[2] + center[2]]), p = P([w[0] + fr.pos[0], w[1] + fr.pos[1], w[2] + fr.pos[2]]);
+      i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); } ctx.stroke(); }
+  };
+  const mid = (leg) => (leg.s[0][2] + leg.s[2][2]) / 2;
+  legs.filter((l) => mid(l) >= bodyC[2]).sort((a, b) => mid(b) - mid(a)).forEach(drawLeg);
+  const abX = -(R.body_radii[0] + R.abdomen_half_len * 0.6), parts = [
+    { c: [abX, 0, 0.03], r: [R.abdomen_half_len + R.abdomen_radius, R.abdomen_radius, R.abdomen_radius] },
+    { c: [0, 0, 0], r: R.body_radii }];
+  parts.forEach((p) => { const w = qrot(fr.quat, p.c); p.d = P([w[0] + fr.pos[0], w[1] + fr.pos[1], w[2] + fr.pos[2]])[2]; });
+  parts.sort((a, b) => b.d - a.d).forEach((p) => blob(p.c, p.r));
+  legs.filter((l) => mid(l) < bodyC[2]).sort((a, b) => mid(b) - mid(a)).forEach(drawLeg);
+
+  /* ---- readout ---- */
+  if (S.roll) {
+    const i = fr.idx, j = Math.max(0, i - 12), dt = (i - j) * DATA.replay.frame_dt, p = S.roll.pos;
+    const v = dt > 0 ? Math.hypot(p[i][0] - p[j][0], p[i][1] - p[j][1]) / dt : 0;
+    const climbed = (p[i][2] - p[0][2]) * 100, down = [0, 1, 2, 3, 4, 5, 6, 7].filter((l) => (fr.contact >> l) & 1).length;
+    $("readout").innerHTML = `time <b>${S.t.toFixed(1)} s</b><br>speed <b>${v.toFixed(2)}</b> of ${S.roll.vx.toFixed(2)} m/s<br>height gained <b>${climbed >= 0 ? "+" : "−"}${Math.abs(climbed).toFixed(0)} cm</b><br>feet down <b>${down}</b> of 8`;
+  }
+}
+
+/* ================================================================ gait diagram (also the timeline) */
+function drawGait() {
+  const [ctx, W, H] = fit($("gait"));
+  ctx.clearRect(0, 0, W, H);
+  if (!DATA) return;
+  const names = DATA.meta.robot.legs, padL = 34, padB = 20, rowH = (H - padB) / 8, x0 = padL, x1 = W - 4;
+  ctx.font = "500 11px 'IBM Plex Mono', monospace"; ctx.textBaseline = "middle";
+  for (let l = 0; l < 8; l++) {
+    const y = l * rowH; ctx.fillStyle = C.mist; ctx.textAlign = "left"; ctx.fillText(names[l], 0, y + rowH / 2);
+    ctx.fillStyle = "rgba(21,53,91,.55)"; ctx.fillRect(x0, y + 3, x1 - x0, rowH - 6);
+  }
+  ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(x0, 4 * rowH); ctx.lineTo(x1, 4 * rowH); ctx.stroke(); // left legs above, right below
+  if (!S.roll) { ctx.fillStyle = C.mist; ctx.textAlign = "center"; ctx.font = "400 13px 'IBM Plex Sans', sans-serif"; ctx.fillText("No replay recorded for this staircase yet", (x0 + x1) / 2, 4 * rowH - 14); return; }
+  const c = S.roll.contact, n = c.length, X = (i) => x0 + (x1 - x0) * i / Math.max(1, n - 1), cur = Math.round(S.t / DATA.replay.frame_dt);
+  for (let l = 0; l < 8; l++) {
+    let start = -1;
+    for (let i = 0; i <= n; i++) {
+      const on = i < n && ((c[i] >> l) & 1);
+      if (on && start < 0) start = i;
+      if (!on && start >= 0) { ctx.fillStyle = C.chalk; ctx.fillRect(X(start), l * rowH + 5, Math.max(1, X(i - 1) - X(start) + (x1 - x0) / n), rowH - 10); start = -1; }
+    }
+  }
+  const dur = duration(); ctx.fillStyle = C.mist; ctx.textBaseline = "alphabetic"; ctx.font = "400 10.5px 'IBM Plex Mono', monospace";
+  const tick = dur > 12 ? 5 : dur > 5 ? 2 : 1;
+  for (let t = 0; t <= dur + 1e-6; t += tick) { const x = x0 + (x1 - x0) * (dur ? t / dur : 0); ctx.textAlign = t === 0 ? "left" : x > x1 - 14 ? "right" : "center"; ctx.fillText(t + " s", x, H - 4); ctx.fillStyle = C.line; ctx.fillRect(x, H - padB, 1, 4); ctx.fillStyle = C.mist; }
+  const px = X(Math.min(n - 1, cur));
+  ctx.fillStyle = C.sodium; ctx.fillRect(px - 1, 0, 2, H - padB);
+  for (let l = 0; l < 8; l++) if ((c[Math.min(n - 1, cur)] >> l) & 1) ctx.fillRect(px - 4, l * rowH + 5, 8, rowH - 10);
+}
+function gaitSeek(ev) {
+  if (!S.roll) return;
+  const r = $("gait").getBoundingClientRect(), u = Math.max(0, Math.min(1, (ev.clientX - r.left - 34) / (r.width - 38)));
+  S.t = u * duration(); S.hold = 0; drawGait(); if (!S.playing) drawStage();
+}
+
+/* ================================================================ anatomy: top view, live footfall */
+function drawAnatomy(contact) {
+  const [ctx, W, H] = fit($("anatomy")); ctx.clearRect(0, 0, W, H);
+  const R = DATA.meta.robot, dp = R.default_pose, q = []; for (let i = 0; i < 8; i++) q.push(dp.coxa, dp.femur, dp.tibia);
+  const legs = legPoints(R, [0, 0, 0], [1, 0, 0, 0], q), sc = Math.min(W / 0.86, H / 0.78), X = (p) => W / 2 + p[0] * sc, Y = (p) => H / 2 - p[1] * sc;
+  ctx.lineCap = "round"; ctx.font = "500 11px 'IBM Plex Mono', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  legs.forEach((l, i) => {
+    ctx.strokeStyle = C.chalk; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(l[0]), Y(l[0])); ctx.lineTo(X(l[2]), Y(l[2])); ctx.stroke();
+    ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(X(l[2]), Y(l[2])); ctx.lineTo(X(l[3]), Y(l[3])); ctx.stroke();
+    const down = (contact >> i) & 1; ctx.beginPath(); ctx.arc(X(l[3]), Y(l[3]), 6, 0, 7); ctx.fillStyle = down ? C.sodium : C.deep; ctx.fill(); ctx.strokeStyle = down ? C.sodium : C.chalk; ctx.lineWidth = 1.4; ctx.stroke();
+    const out = Math.hypot(l[3][0], l[3][1]), k = (out + 0.055) / out; ctx.fillStyle = down ? C.sodium : C.mist; ctx.fillText(R.legs[i], W / 2 + l[3][0] * k * sc, H / 2 - l[3][1] * k * sc);
+  });
+  const abX = -(R.body_radii[0] + R.abdomen_half_len * 0.6);
+  for (const [cx, rx, ry] of [[abX, R.abdomen_half_len + R.abdomen_radius, R.abdomen_radius], [0, R.body_radii[0], R.body_radii[1]]]) {
+    ctx.beginPath(); ctx.ellipse(W / 2 + cx * sc, H / 2, rx * sc, ry * sc, 0, 0, 7); ctx.fillStyle = "#0a2242"; ctx.fill(); ctx.strokeStyle = C.chalk; ctx.lineWidth = 1.5; ctx.stroke(); }
+}
+function renderFacts() {
+  const R = DATA.meta.robot, legM = R.coxa[2] + R.femur[2] + R.tibia[2] + R.foot_mass, mass = R.body_mass + R.abdomen_mass + 8 * legM;
+  const q = []; for (let i = 0; i < 8; i++) q.push(R.default_pose.coxa, R.default_pose.femur, R.default_pose.tibia);
+  const feet = legPoints(R, [0, 0, 0], [1, 0, 0, 0], q).map((l) => l[3]), span = 2 * Math.max(...feet.map((f) => Math.abs(f[1])));
+  const stand = -feet[0][2] + R.foot_radius, T = terrainOf(), hMax = Math.max(...T.step_heights);
+  const rows = [["Mass", mass.toFixed(1) + " kg"], ["Standing height", cm(stand) + " cm"], ["Leg span", cm(span) + " cm"], ["Joints", "8 legs \u00d7 3 = 24"],
+    ["Tallest step in training", cm(hMax) + " cm"], ["Tallest step vs standing height", Math.round(hMax / stand * 100) + "%"]];
+  $("facts").innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("");
+}
+
+/* ================================================================ training instruments */
+const M = () => DATA.metrics;
+function smoothAt(name, idx, win = 6) {
+  const s = M().series[name]; if (!s) return null;
+  let sum = 0, cnt = 0;
+  for (let i = Math.max(0, idx - win); i <= Math.min(s.length - 1, idx + win); i++) if (s[i] != null) { sum += s[i]; cnt++; }
+  return cnt ? sum / cnt : null;
+}
+function drawStairs() {
+  const cv = $("stairs"), empty = $("stairs-empty"), T = terrainOf(), n = T.n_levels;
+  const has = M().iters.length > 0;
+  cv.hidden = !has; empty.hidden = has;
+  if (!has) { empty.innerHTML = "No training log yet. Start one with <code>python scripts/train.py</code> and this page fills in as it runs."; return; }
+  const [ctx, W, H] = fit(cv); ctx.clearRect(0, 0, W, H);
+  const pops = []; let anyPop = false;
+  for (let l = 0; l < n; l++) { const v = smoothAt("level_pop_" + l, S.iterIdx, 2); pops.push(v || 0); if (v != null) anyPop = true; }
+  const padL = 46, padR = 8, padB = 24, treadW = (W - padL - padR) / n, total = T.step_heights.reduce((a, b) => a + b, 0);
+  const s = (H * 0.42) / Math.max(total, 0.25), base = H - padB, maxPop = Math.max(0.01, ...pops), barMax = H * 0.36;
+  // staircase profile, risers at their true relative heights
+  ctx.beginPath(); ctx.moveTo(padL, base); let y = base; const tops = [];
+  for (let l = 0; l < n; l++) { y -= T.step_heights[l] * s; ctx.lineTo(padL + l * treadW, y); ctx.lineTo(padL + (l + 1) * treadW, y); tops.push(y); }
+  ctx.lineTo(W - padR, base); ctx.closePath(); ctx.fillStyle = "rgba(21,53,91,.7)"; ctx.fill(); ctx.strokeStyle = C.chalk; ctx.lineWidth = 1.2; ctx.stroke();
+  // the spider's standing height, to the same scale
+  const sh = 0.154 * s; ctx.strokeStyle = C.sodium; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(18, base); ctx.lineTo(18, base - sh); ctx.moveTo(13, base); ctx.lineTo(23, base); ctx.moveTo(13, base - sh); ctx.lineTo(23, base - sh); ctx.stroke();
+  ctx.save(); ctx.translate(9, base - sh / 2); ctx.rotate(-Math.PI / 2); ctx.fillStyle = C.sodium; ctx.font = "400 10px 'IBM Plex Mono', monospace"; ctx.textAlign = "center"; ctx.fillText("spider", 0, 0); ctx.restore();
+  ctx.textAlign = "center";
+  const meanLv = smoothAt("terrain_level", S.iterIdx, 2);
+  for (let l = 0; l < n; l++) {
+    const cx = padL + (l + 0.5) * treadW;
+    ctx.fillStyle = C.mist; ctx.font = "400 10.5px 'IBM Plex Mono', monospace"; ctx.fillText(cm(T.step_heights[l]) + " cm", cx, H - 7);
+    if (anyPop) {
+      const bh = barMax * pops[l] / maxPop, bw = Math.min(34, treadW * 0.5);
+      ctx.fillStyle = C.chalk; ctx.fillRect(cx - bw / 2, tops[l] - bh, bw, bh);
+      ctx.fillStyle = C.chalk; ctx.font = "500 11px 'IBM Plex Mono', monospace"; ctx.fillText(Math.round(pops[l] * 100) + "%", cx, tops[l] - bh - 6);
+    }
+  }
+  if (meanLv != null) { // marker for the mean level, placed along the treads
+    const lv = Math.max(0, Math.min(n - 1, meanLv)), x = padL + (lv + 0.5) * treadW, li = Math.round(lv), yy = tops[li];
+    if (!anyPop) { ctx.fillStyle = C.sodium; ctx.beginPath(); ctx.arc(x, yy - 9, 5, 0, 7); ctx.fill(); ctx.font = "500 11px 'IBM Plex Mono', monospace"; ctx.fillText("mean level " + meanLv.toFixed(1), x, yy - 22); }
+  }
+  $("stairs-note").textContent = anyPop ? "Share of spiders practising each step height" : "Average level the spiders are practising";
+}
+const CHARTS = [
+  { key: "terrain_level", name: "Average stair level", fmt: (v) => v.toFixed(2) },
+  { key: "success_rate", name: "Staircases finished", fmt: (v) => Math.round(v * 100) + "%", max: 1 },
+  { key: "mean_reward", name: "Reward per episode", fmt: (v) => v.toFixed(1) },
+];
+function buildCharts() {
+  $("charts").innerHTML = M().iters.length ? CHARTS.map((c, i) => `<div class="chart-row"><div class="chart-head"><span class="label">${c.name}</span><span class="v" id="cv${i}"></span></div><canvas class="chart" id="ch${i}"></canvas></div>`).join("")
+    : `<div class="empty">Curves appear after the first training iteration.</div>`;
+}
+function drawCharts() {
+  const it = M().iters; if (!it.length) return;
+  CHARTS.forEach((c, ci) => {
+    const cv = $("ch" + ci); if (!cv) return;
+    const [ctx, W, H] = fit(cv); ctx.clearRect(0, 0, W, H);
+    const raw = M().series[c.key] || [], sm = raw.map((_, i) => smoothAt(c.key, i, 5)), vals = sm.filter((v) => v != null);
+    if (!vals.length) { ctx.fillStyle = C.mist; ctx.font = "400 12px 'IBM Plex Sans', sans-serif"; ctx.fillText("not logged in this run", 0, H / 2); return; }
+    let lo = Math.min(0, ...vals), hi = c.max != null ? c.max : Math.max(...vals); if (hi - lo < 1e-6) hi = lo + 1;
+    const padR = 6, padT = 6, padB = 4, X = (i) => (W - padR) * i / Math.max(1, it.length - 1), Y = (v) => padT + (H - padT - padB) * (1 - (v - lo) / (hi - lo));
+    ctx.strokeStyle = "rgba(43,80,125,.7)"; ctx.lineWidth = 1; ctx.fillStyle = C.mist; ctx.font = "400 10px 'IBM Plex Mono', monospace"; ctx.textAlign = "right";
+    for (const g of [lo, (lo + hi) / 2, hi]) { const y = Math.round(Y(g)) + 0.5; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W - padR, y); ctx.stroke(); }
+    ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillText(c.fmt(hi), 2, Y(hi) + 3); ctx.textBaseline = "bottom"; ctx.fillText(c.fmt(lo), 2, Y(lo) - 2);
+    ctx.strokeStyle = "rgba(157,183,207,.35)"; ctx.beginPath(); let pen = false; // raw
+    raw.forEach((v, i) => { if (v == null) { pen = false; return; } const y = Y(Math.max(lo, Math.min(hi, v))); pen ? ctx.lineTo(X(i), y) : ctx.moveTo(X(i), y); pen = true; }); ctx.stroke();
+    let first = -1, last = -1; ctx.beginPath(); pen = false; // smoothed, with an area fill
+    sm.forEach((v, i) => { if (v == null) return; if (first < 0) first = i; last = i; pen ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)); pen = true; });
+    ctx.strokeStyle = C.chalk; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.lineTo(X(last), Y(lo)); ctx.lineTo(X(first), Y(lo)); ctx.closePath(); ctx.fillStyle = "rgba(234,242,248,.08)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(X(last), Y(sm[last]), 3, 0, 7); ctx.fillStyle = C.chalk; ctx.fill();
+    ctx.fillStyle = C.mist; ctx.textAlign = "right"; ctx.textBaseline = "bottom"; ctx.fillText("iteration " + it[it.length - 1], W - padR - 6, Y(lo) - 2);
+    const xi = Math.round(X(S.iterIdx)) + 0.5; ctx.strokeStyle = C.sodium; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(xi, 0); ctx.lineTo(xi, H); ctx.stroke();
+    const here = sm[S.iterIdx]; if (here != null) { ctx.beginPath(); ctx.arc(xi, Y(here), 3.5, 0, 7); ctx.fillStyle = C.sodium; ctx.fill(); }
+    $("cv" + ci).textContent = here != null ? c.fmt(here) : "–";
+  });
+}
+function drawLedger() {
+  const el = $("ledger"), rows = [];
+  for (const k of Object.keys(DATA.meta.reward_scales)) { const v = smoothAt("rew_" + k, S.iterIdx, 6); if (v != null) rows.push([k, v]); }
+  if (!rows.length) { el.innerHTML = `<div class="empty" style="grid-column:1/-1">Reward terms appear once training has logged an episode.</div>`; return; }
+  rows.sort((a, b) => b[1] - a[1]);
+  const neg = Math.max(1e-9, ...rows.map((r) => -r[1])), pos = Math.max(1e-9, ...rows.map((r) => r[1])), zero = neg / (neg + pos) * 100;
+  el.style.setProperty("--zero", zero + "%");
+  el.innerHTML = rows.map(([k, v]) => { const w = Math.abs(v) / (neg + pos) * 100;
+    const bar = v >= 0 ? `<div class="fill pos" style="left:${zero}%;width:${w}%"></div>` : `<div class="fill neg" style="left:${zero - w}%;width:${w}%"></div>`;
+    return `<span class="name">${REWARD_NAMES[k] || k}</span><div class="track">${bar}</div><span class="val">${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(3)}</span>`; }).join("");
+}
+function drawInstruments() {
+  const it = M().iters; $("iter-val").textContent = it.length ? it[S.iterIdx] : "0";
+  drawStairs(); drawCharts(); drawLedger();
+}
+
+/* ================================================================ chrome */
+function renderLevels() {
+  const T = terrainOf(), rolls = DATA.replay ? DATA.replay.rollouts : [];
+  $("levels").innerHTML = T.step_heights.map((h, l) => { const r = rolls.find((x) => x.tile === S.tile && x.level === l), o = r ? r.outcome : "";
+    return `<button data-l="${l}" aria-pressed="${l === S.level}" title="${r ? o : "no replay"}"><span class="dot ${o}"></span>${cm(h)} cm</button>`; }).join("");
+  const st = $("stamp"), r = S.roll;
+  st.className = "stamp " + (r ? r.outcome : "none");
+  st.textContent = !r ? "no replay yet" : r.outcome === "climbed" ? `reached the ${S.tile === "ascend" ? "top" : "bottom"} in ${duration().toFixed(1)} s` : r.outcome === "fell" ? `fell after ${duration().toFixed(1)} s` : "ran out of time";
+  const T2 = terrainOf(); $("platecap").innerHTML = `${T2.n_steps} steps &times; ${cm(T2.step_heights[S.level])} cm<br>${S.tile === "ascend" ? "start at the bottom" : "start at the top"}`;
+  if (!r) $("readout").innerHTML = DATA.replay ? "" : "Record replays with<br><b>python scripts/dashboard.py --record</b>";
+}
+function renderMast() {
+  const m = DATA.meta, it = M().iters, last = it.length - 1, rolls = DATA.replay ? DATA.replay.rollouts : [];
+  $("runline").textContent = `run ${m.exp}` + (DATA.replay ? ` · replays from checkpoint ${DATA.replay.ckpt}` : "");
+  $("f-iter").textContent = it.length ? it[last].toLocaleString() : "0";
+  const sh = it.length ? smoothAt("step_height_cm", last, 5) : null, sr = it.length ? smoothAt("success_rate", last, 10) : null;
+  $("f-step").innerHTML = (sh != null ? sh.toFixed(1) : "–") + "<small>cm</small>";
+  $("f-succ").innerHTML = (sr != null ? Math.round(sr * 100) : "–") + "<small>%</small>";
+  const ok = rolls.filter((r) => r.outcome === "climbed").length;
+  $("foot-a").textContent = rolls.length ? `replays: ${ok} of ${rolls.length} staircases completed` : "no replays recorded";
+  $("foot-b").textContent = `data read ${m.generated}`;
+}
+function applyData(d, first) {
+  DATA = d;
+  const it = M().iters; $("iter").max = Math.max(0, it.length - 1);
+  if (S.follow || first) { S.iterIdx = Math.max(0, it.length - 1); $("iter").value = S.iterIdx; }
+  if (first) {
+    const rolls = d.replay ? d.replay.rollouts : [], best = rolls.filter((r) => r.outcome === "climbed").sort((a, b) => (b.tile === "ascend") - (a.tile === "ascend") || b.level - a.level)[0];
+    if (best) { S.level = best.level; S.tile = best.tile; $("tile-" + best.tile).checked = true; } // open on the hardest staircase it finished
+    buildCharts(); pickRoll();
+  } else if (!$("ch0") && it.length) buildCharts();
+  renderMast(); renderLevels(); renderFacts(); drawInstruments();
+}
+
+/* ================================================================ events + loop */
+$("levels").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { S.level = +b.dataset.l; pickRoll(); } });
+document.querySelectorAll("input[name=tile]").forEach((r) => r.addEventListener("change", () => { S.tile = r.value; pickRoll(); }));
+document.querySelectorAll("input[name=speed]").forEach((r) => r.addEventListener("change", () => { S.speed = +r.value; }));
+$("play").addEventListener("click", () => { S.playing = !S.playing; if (S.playing && S.t >= duration()) S.t = 0; syncPlay(); });
+function syncPlay() { $("play").textContent = S.playing ? "Pause" : "Play"; $("play").setAttribute("aria-pressed", S.playing); }
+$("iter").addEventListener("input", (e) => { S.iterIdx = +e.target.value; S.follow = S.iterIdx >= +e.target.max; drawInstruments(); });
+$("zoom-in").addEventListener("click", () => { S.cam.dist = Math.max(1.0, S.cam.dist * 0.85); });
+$("zoom-out").addEventListener("click", () => { S.cam.dist = Math.min(9, S.cam.dist / 0.85); });
+{ const st = $("stage"); let drag = null;
+  st.addEventListener("pointerdown", (e) => { drag = [e.clientX, e.clientY]; st.setPointerCapture(e.pointerId); });
+  st.addEventListener("pointermove", (e) => { if (!drag) return; S.cam.yaw -= (e.clientX - drag[0]) * 0.008; S.cam.pitch = Math.max(0.12, Math.min(1.45, S.cam.pitch + (e.clientY - drag[1]) * 0.006)); drag = [e.clientX, e.clientY]; });
+  const end = () => { drag = null; }; st.addEventListener("pointerup", end); st.addEventListener("pointercancel", end);
+  st.addEventListener("keydown", (e) => { const k = { ArrowLeft: [0.1, 0], ArrowRight: [-0.1, 0], ArrowUp: [0, 0.06], ArrowDown: [0, -0.06] }[e.key]; if (k) { S.cam.yaw += k[0]; S.cam.pitch = Math.max(0.12, Math.min(1.45, S.cam.pitch + k[1])); e.preventDefault(); } });
+  const g = $("gait"); let seeking = false;
+  g.addEventListener("pointerdown", (e) => { seeking = true; g.setPointerCapture(e.pointerId); gaitSeek(e); });
+  g.addEventListener("pointermove", (e) => { if (seeking) gaitSeek(e); });
+  g.addEventListener("pointerup", () => { seeking = false; }); g.addEventListener("pointercancel", () => { seeking = false; });
+  g.addEventListener("keydown", (e) => { const d = { ArrowLeft: -0.2, ArrowRight: 0.2 }[e.key]; if (d && S.roll) { S.t = Math.max(0, Math.min(duration(), S.t + d)); drawGait(); e.preventDefault(); } });
+}
+new ResizeObserver(() => { if (DATA) { drawGait(); drawInstruments(); drawStage(); drawAnatomy(S.roll ? frameAt(S.t).contact : 255); } }).observe(document.querySelector(".page"));
+
+let prev = performance.now(), lastGait = -1;
+function tick(now) {
+  const dt = Math.min(0.1, (now - prev) / 1000); prev = now;
+  if (DATA) {
+    if (S.roll && S.playing) {
+      const dur = duration();
+      if (S.t >= dur) { S.hold += dt; if (S.hold > 1.6) { S.t = 0; S.hold = 0; } } // rest on the last frame, then loop
+      else S.t = Math.min(dur, S.t + dt * S.speed);
+    }
+    drawStage();
+    const g = Math.round(S.t * 25); if (g !== lastGait) { lastGait = g; drawGait(); drawAnatomy(S.roll ? frameAt(S.t).contact : 255); }
+  }
+  requestAnimationFrame(tick);
+}
+
+(async function boot() {
+  syncPlay();
+  if (DATA) applyData(DATA, true);
+  else { // served by scripts/dashboard.py: read live data and keep the curves fresh while training runs
+    const load = async (first) => { try { const r = await fetch("data.json?" + Date.now()); const d = await r.json(); if (!first && DATA) d.replay = d.replay || DATA.replay; applyData(d, first); } catch (err) { if (first) $("readout").textContent = "Could not load data.json. Start the page with: python scripts/dashboard.py"; } };
+    await load(true); setInterval(() => load(false), 15000);
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (DATA) { drawGait(); drawInstruments(); } });
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
