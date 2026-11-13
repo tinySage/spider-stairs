@@ -141,3 +141,7 @@ spider-stairs/
 ## Tested with
 
 genesis-world 1.4.6, rsl-rl-lib 5.5.2, torch 2.15, Python 3.13.
+
+---
+
+© 2026 Muktanan Mohapatra. All rights reserved.
