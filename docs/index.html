@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teaching a Spider to Climb Stairs</title>
+<meta name="description" content="An eight-legged robot with 24 motors learns to climb stairs in simulation, and the two ways it cheated first.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Cyanotype field notebook, the same world as the project's dashboard.
+     Layout: a single narrow column of prose, with mono specimen notes in the left margin at wide widths. */
+  --prussian: #0c2340;
+  --deep: #081a31;
+  --wash: #15355b;
+  --line: #2b507d;
+  --chalk: #eaf2f8;
+  --mist: #9db7cf;
+  --sodium: #ffcf3a;
+  --lichen: #8fe3c0;
+  --ember: #ff8562;
+  --display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --measure: 34rem;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--prussian);
+  background-image: radial-gradient(130% 70% at 25% -5%, #133260 0%, var(--prussian) 52%, #07172c 100%);
+  background-attachment: fixed;
+  color: var(--chalk);
+  font: 400 17px/1.65 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font: 500 11px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--mist); }
+
+/* ---------- hero ---------- */
+.hero { position: relative; border-bottom: 1px solid var(--line); overflow: hidden; }
+.hero::after { /* keeps the title legible wherever the staircase happens to sit */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(104deg, rgba(10,28,52,.94) 0%, rgba(10,28,52,.72) 26%, rgba(10,28,52,0) 54%),
+              linear-gradient(to top, rgba(10,28,52,.9) 0%, rgba(10,28,52,0) 16%);
+}
+.hero-text, .hero-foot { z-index: 2; }
+#hero-canvas { display: block; width: 100%; height: clamp(400px, 64vh, 640px); }
+.hero-text { position: absolute; left: 0; right: 0; top: clamp(34px, 7vh, 80px); padding: 0 clamp(20px, 6vw, 80px); pointer-events: none; }
+.hero-text h1 { font: italic 400 clamp(46px, 9.5vw, 128px)/.9 var(--display); margin: 10px 0 0; letter-spacing: -.015em; text-wrap: balance; }
+.hero-text .sub { font: 400 clamp(18px, 2.4vw, 27px)/1.3 var(--display); color: var(--chalk); margin: 14px 0 0; max-width: 20ch; }
+.hero-foot { position: absolute; left: 0; right: 0; bottom: 20px; padding: 0 clamp(20px, 6vw, 80px); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 30px; }
+.hero-foot span { font: 500 11.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--sodium); }
+.hero-foot .muted { color: var(--mist); }
+
+/* ---------- shell ---------- */
+.wrap { max-width: 1140px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 48px); }
+.lede { font: 400 clamp(21px, 2.6vw, 27px)/1.45 var(--display); color: var(--chalk); max-width: 30ch; margin: 0; }
+.lede-block { display: grid; grid-template-columns: 170px minmax(0, var(--measure)); gap: 0 56px; }
+.lede-block .lede { grid-column: 2; }
+@media (max-width: 860px) { .lede-block { grid-template-columns: minmax(0, 1fr); } .lede-block .lede { grid-column: 1; } }
+.lede-block { padding: clamp(40px, 7vw, 76px) 0 clamp(28px, 4vw, 44px); border-bottom: 1px solid var(--line); }
+
+section { padding: clamp(40px, 6vw, 72px) 0; border-bottom: 1px solid var(--line); }
+.row { display: grid; grid-template-columns: 170px minmax(0, var(--measure)); gap: 0 56px; }
+.aside { grid-column: 1; }
+.flow { grid-column: 2; min-width: 0; }
+@media (max-width: 860px) { .row { grid-template-columns: minmax(0, 1fr); gap: 0; } .aside, .flow { grid-column: 1; } .aside { margin-bottom: 18px; } }
+h2 { font: 400 clamp(29px, 3.6vw, 40px)/1.08 var(--display); margin: 0 0 18px; letter-spacing: -.01em; text-wrap: balance; }
+h3 { font: 500 15px/1.4 var(--body); margin: 32px 0 8px; color: var(--chalk); }
+p { margin: 0 0 17px; }
+.flow > p:last-child { margin-bottom: 0; }
+a { color: var(--chalk); text-decoration-color: var(--line); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--sodium); }
+code { font: 400 .88em var(--mono); background: var(--wash); padding: 2px 6px; }
+.note { font: 400 12.5px/1.6 var(--mono); color: var(--mist); }
+.note b { color: var(--chalk); font-weight: 500; display: block; margin-bottom: 4px; letter-spacing: .08em; text-transform: uppercase; font-size: 11px; }
+figure { margin: 26px 0; }
+figcaption { font: 400 12.5px/1.55 var(--mono); color: var(--mist); margin-top: 10px; }
+
+/* ---------- figures ---------- */
+.plate { border: 1px solid var(--line); background: var(--deep); padding: 14px; }
+.plate canvas { display: block; width: 100%; }
+#gait { height: 150px; }
+#anatomy { height: 260px; }
+#ladder { height: 220px; }
+
+/* ---------- numbers ---------- */
+.specimen { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin: 0; }
+.specimen div { background: var(--deep); padding: 15px 16px; }
+.specimen dt { font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--mist); }
+.specimen dd { margin: 7px 0 0; font: 400 30px/1 var(--display); }
+.specimen dd small { font: 400 12px var(--mono); color: var(--mist); margin-left: 3px; }
+
+table { width: 100%; border-collapse: collapse; font: 400 14px var(--body); margin: 4px 0 0; }
+th, td { text-align: left; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: baseline; }
+th { font: 500 10.5px var(--mono); letter-spacing: .09em; text-transform: uppercase; color: var(--mist); }
+td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+td.r { text-align: right; padding-right: 0; }
+.tag { font: 500 10.5px var(--mono); letter-spacing: .08em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 7px; }
+.tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.tag.ok { color: var(--lichen); } .tag.no { color: var(--mist); }
+
+/* ---------- cheats ---------- */
+.cheat { border-left: 2px solid var(--sodium); padding: 2px 0 2px 20px; margin: 26px 0; }
+.cheat h3 { margin-top: 0; font: italic 400 24px/1.2 var(--display); }
+.cheat .fix { font: 400 14px/1.6 var(--body); color: var(--mist); margin-bottom: 0; }
+.cheat .fix b { color: var(--chalk); font-weight: 500; }
+
+/* ---------- end ---------- */
+.ends { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.ends a { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--line); padding: 11px 16px; font: 500 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; text-decoration: none; transition: border-color .15s, background .15s; }
+.ends a:hover { border-color: var(--chalk); background: rgba(157, 183, 207, .08); }
+.ends a::after { content: "\2192"; color: var(--sodium); }
+footer { padding: 30px 0 48px; font: 400 12px/1.8 var(--mono); color: var(--mist); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 30px; }
+:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { #hero-canvas { opacity: 1; } }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <canvas id="hero-canvas" aria-label="A simulated eight-legged spider walking down a staircase"></canvas>
+  <div class="hero-text">
+    <div class="eyebrow">Reinforcement learning in Genesis</div>
+    <h1>Arachne<br>scandens</h1>
+    <p class="sub">Teaching an eight-legged robot to climb stairs.</p>
+  </div>
+  <div class="hero-foot">
+    <span id="hero-cap">12 cm steps &middot; 78% of its standing height</span>
+    <span class="muted">Real replay &middot; trained policy &middot; no exploration noise</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="lede-block">
+    <p class="lede">Eight legs, 24 motors, and a staircase it has never seen. Nobody told it how to walk. This is what it worked out, and the two ways it cheated first.</p>
+  </div>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>The task</b>A spider is dropped onto a tile of stairs and given one instruction: walk that way. Everything between the instruction and the motion is learned.</p></div>
+      <div class="flow">
+        <h2>Walking is easy. Stairs are not.</h2>
+        <p>Flat-ground walking is close to a solved problem in simulation. A policy finds a rhythm, the rhythm holds, and nothing in the world argues with it. Stairs break that. The ground stops being a plane and becomes a sequence of decisions: this foot clears the riser, that one does not, and the body has to pitch to let the back legs follow.</p>
+        <p>Eight legs make the problem both easier and harder. Easier because the spider is statically stable almost all the time, so a bad step rarely ends the episode. Harder because there are 24 joints to coordinate instead of 12, eight contact points arguing with each other, and a much larger space of gaits that technically work but look nothing like walking.</p>
+        <p>The tallest step here is 12 cm against a standing height of 15.4 cm. For a person of average height, that is a staircase with steps a little over a metre tall.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>The animal</b>Generated from a parameter spec rather than modelled by hand, so leg count, segment lengths and masses are all variables.</p></div>
+      <div class="flow">
+        <h2>Building the spider</h2>
+        <p>The body is an ellipsoid with an abdomen behind it, and each of the eight legs is a three-link chain: a hip that swings the leg fore and aft, a hip that lifts it, and a knee that folds the shin. The resting pose holds the knees above the body, which is the detail that makes stair climbing possible at all. A leg with its knee below the body can only push; a leg with its knee above can reach.</p>
+        <figure>
+          <div class="plate"><canvas id="anatomy" aria-label="Top view of the spider showing eight legs labelled L1 to L4 and R1 to R4"></canvas></div>
+          <figcaption>Seen from above, head to the right. Eight legs, three joints each.</figcaption>
+        </figure>
+        <dl class="specimen">
+          <div><dt>Mass</dt><dd class="mono" id="s-mass">&ndash;</dd></div>
+          <div><dt>Standing height</dt><dd class="mono" id="s-height">&ndash;</dd></div>
+          <div><dt>Leg span</dt><dd class="mono" id="s-span">&ndash;</dd></div>
+          <div><dt>Joints</dt><dd class="mono">24</dd></div>
+        </dl>
+        <p style="margin-top:22px">The policy does not command torques directly. It outputs 24 joint angles fifty times a second, and a position controller running at 200 Hz chases them. That split matters: the policy works in a space where a sensible output looks like a pose, not like a set of forces, and the controller absorbs the physics in between.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>The terrain</b>Steps are square rings around a central platform, so a spider walking out in any direction meets a staircase, and diagonal headings cross the corners.</p></div>
+      <div class="flow">
+        <h2>A staircase that cannot be dodged</h2>
+        <p>Each training tile is six metres square with a flat platform at its centre. Half the tiles are pits: the spider starts at the bottom and has to climb out. The other half are pyramids, where it starts on the summit and has to come down. Descending turns out to be a genuinely different skill, and the policy learns it first.</p>
+        <p>At the start of every episode the spider gets a random heading and a random speed between 0.25 and 0.6 m/s. Because the steps are concentric, there is no direction that avoids them, and no gait that works only when the stairs are straight ahead.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>The curriculum</b>Difficulty is not scheduled by iteration count. It follows what each spider can actually do.</p></div>
+      <div class="flow">
+        <h2>Let the stairs grow</h2>
+        <p>Dropping a fresh policy onto 12 cm steps teaches it nothing except how to fall over. So the tiles are arranged into levels, from 2 cm steps up to 12 cm, and every spider keeps its own position in that ladder. Finish a staircase and it moves up a level. Fail to get halfway and it moves down. Spiders that clear the hardest level are recycled to a random one, so the population never abandons the easy stairs entirely.</p>
+        <p>The useful property is that difficulty tracks ability per spider rather than per run. At any moment the population is spread across the ladder, and the average level is a far better progress signal than reward, which actually falls as the stairs get harder.</p>
+        <figure>
+          <div class="plate"><canvas id="ladder" aria-label="Bar chart of the share of spiders at each step height"></canvas></div>
+          <figcaption>Where the population sat at the end of the demo run. Nearly a quarter had reached the tallest stairs.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>The interesting part</b>Both failures looked like success in every training curve. Both were only visible in replay.</p></div>
+      <div class="flow">
+        <h2>Two ways it cheated</h2>
+        <p>Reward functions for legged robots are usually inherited rather than derived, and the standard set is tuned for quadrupeds that run at a metre per second. This spider walks at about a third of that, and the mismatch produced two failures that a training curve cannot show you.</p>
+
+        <div class="cheat">
+          <h3>It learned to stand still</h3>
+          <p>Velocity tracking is normally rewarded with a Gaussian kernel around the commanded speed. With the standard width, a spider commanded to walk at 0.3 m/s and standing perfectly motionless still collected between 53 and 78 per cent of the available reward. Walking is expensive and risky; standing is free. The policy found that out in a few hundred iterations.</p>
+          <p class="fix"><b>Fix.</b> A kernel five times tighter, plus a dense term that pays for the fraction of commanded speed actually achieved, so that standing still scores zero rather than most of the points.</p>
+        </div>
+
+        <div class="cheat">
+          <h3>It learned to vibrate</h3>
+          <p>The second policy reported 81 per cent of episodes finishing their staircase. Switch the exploration noise off, as you would at deployment, and the spider moved at 0.01 m/s. It had not learned to walk. It had learned that random jitter applied to 24 joints will ratchet a light eight-legged body along on friction, and the noise injected during training was doing the walking for it. The policy's own contribution was to hold a pose that made the jitter productive.</p>
+          <p class="fix"><b>Fix.</b> A penalty on any foot that slides while it is in contact with the ground. Ratcheting requires planted feet to slip, so pricing that behaviour removed the exploit, and a real alternating gait appeared in its place.</p>
+        </div>
+
+        <p>The lesson is cheap to state and expensive to learn: evaluate the deterministic policy, not the training statistics. A number that goes up is not evidence of the behaviour you wanted.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>The run</b>256 spiders, 500 iterations, about 3 million simulated steps, on two CPU cores. Roughly one per cent of the planned training budget.</p></div>
+      <div class="flow">
+        <h2>Where it stands</h2>
+        <p>The results below come from the small demo run, which exists to prove the pipeline rather than to solve the task. During training, with exploration noise on, 83 per cent of episodes finished their staircase. Evaluated properly, one attempt per staircase with the noise off, the picture is more modest.</p>
+        <table>
+          <thead><tr><th>Staircase</th><th>Steps</th><th>Result</th><th class="r">Time</th></tr></thead>
+          <tbody id="results"></tbody>
+        </table>
+        <p style="margin-top:20px">Three of the four descents finished, including the tallest stairs. Not one ascent did. That split is not surprising: going down, gravity helps and the spider mostly has to avoid falling, while going up it has to lift its whole mass over a riser nearly as tall as it stands, eight times per step. The odd result is the 5.5 cm descent, where the spider sat on the summit and never committed to the first step down, which is the kind of local optimum more training usually clears.</p>
+        <p>What the run does establish is that the gait is real. The footfall pattern below comes from the hero replay at the top of this page.</p>
+        <figure>
+          <div class="plate"><canvas id="gait" aria-label="Footfall diagram showing which of the eight feet are on the ground over time"></canvas></div>
+          <figcaption>Each bar is one foot on the ground. Left legs above the line, right legs below. Overlapping but offset: legs swing in groups rather than together.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>Next</b>The full run has not been attempted. It needs a GPU and roughly a hundred times the compute used here.</p></div>
+      <div class="flow">
+        <h2>What is left</h2>
+        <p>The immediate step is the full training run: 4096 spiders instead of 256, 3000 iterations instead of 500. The demo saturates long before the policy has seen enough of the hard stairs to solve them, and the curriculum data suggests the population was still climbing when it stopped.</p>
+        <p>After that, two changes worth trying. A foot-clearance reward tied to the height of the next riser, which would attack the ascent failure directly rather than hoping the policy discovers clearance on its own. And removing the terrain scan from the policy's observations, so that it has to feel the stairs through joint feedback instead of being handed a height map. The second is the harder and more interesting problem, because it is the one a real robot faces.</p>
+        <div class="ends">
+          <a href="demo.html">Open the dashboard</a>
+          <a href="https://github.com/tinySage/spider-stairs">Source on GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Built with Genesis, PyTorch and rsl-rl.</span>
+    <span>&copy; 2026 Muktanan Mohapatra. All rights reserved.</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+const D = {"robot":{"mount_ellipse":[0.095,0.07],"coxa":[0.04,0.016,0.05],"femur":[0.14,0.013,0.08],"tibia":[0.22,0.01,0.05],"foot_radius":0.016,"body_radii":[0.11,0.08,0.04],"abdomen_half_len":0.045,"abdomen_radius":0.07,"body_mass":1.2,"abdomen_mass":0.35,"foot_mass":0.015,"mount_angles_deg":[35.0,70.0,110.0,145.0],"legs":["L1","L2","L3","L4","R1","R2","R3","R4"],"default_pose":{"coxa":0.0,"femur":-0.5,"tibia":1.7},"stand_height":0.1539},"terrain":{"tile_size":6.0,"platform_half":0.7,"step_depth":0.3,"n_steps":6,"step_height":0.12},"rollout":{"frame_dt":0.04,"pos":[[-0.097,0.177,0.904],[-0.098,0.176,0.896],[-0.097,0.179,0.884],[-0.095,0.19,0.884],[-0.092,0.202,0.883],[-0.091,0.212,0.882],[-0.09,0.219,0.887],[-0.086,0.228,0.892],[-0.083,0.236,0.891],[-0.08,0.242,0.888],[-0.074,0.252,0.89],[-0.067,0.264,0.893],[-0.059,0.275,0.89],[-0.055,0.285,0.884],[-0.053,0.293,0.887],[-0.048,0.301,0.896],[-0.042,0.309,0.902],[-0.038,0.317,0.901],[-0.036,0.325,0.898],[-0.033,0.337,0.903],[-0.027,0.35,0.907],[-0.02,0.365,0.905],[-0.017,0.378,0.9],[-0.021,0.385,0.895],[-0.025,0.39,0.892],[-0.022,0.393,0.896],[-0.015,0.4,0.903],[-0.007,0.408,0.904],[-0.001,0.414,0.898],[0.005,0.419,0.889],[0.009,0.427,0.89],[0.015,0.435,0.896],[0.022,0.442,0.896],[0.025,0.448,0.89],[0.027,0.453,0.882],[0.028,0.459,0.883],[0.032,0.465,0.888],[0.039,0.47,0.892],[0.045,0.478,0.887],[0.052,0.487,0.869],[0.058,0.496,0.856],[0.063,0.507,0.851],[0.068,0.518,0.85],[0.072,0.526,0.845],[0.072,0.531,0.841],[0.072,0.537,0.84],[0.071,0.544,0.844],[0.072,0.553,0.846],[0.074,0.563,0.846],[0.076,0.57,0.842],[0.076,0.576,0.839],[0.077,0.582,0.84],[0.079,0.592,0.843],[0.081,0.605,0.844],[0.082,0.615,0.839],[0.082,0.624,0.832],[0.084,0.632,0.832],[0.089,0.642,0.834],[0.094,0.653,0.835],[0.097,0.663,0.831],[0.099,0.67,0.829],[0.1,0.679,0.832],[0.103,0.69,0.833],[0.108,0.701,0.826],[0.117,0.707,0.816],[0.122,0.712,0.814],[0.125,0.717,0.814],[0.127,0.725,0.81],[0.126,0.73,0.805],[0.125,0.735,0.798],[0.128,0.741,0.795],[0.133,0.747,0.792],[0.137,0.752,0.79],[0.139,0.756,0.786],[0.14,0.76,0.782],[0.14,0.764,0.779],[0.14,0.769,0.775],[0.139,0.774,0.772],[0.139,0.779,0.769],[0.139,0.788,0.763],[0.141,0.797,0.758],[0.142,0.805,0.755],[0.144,0.813,0.751],[0.146,0.819,0.746],[0.148,0.826,0.743],[0.151,0.835,0.742],[0.152,0.843,0.74],[0.151,0.851,0.736],[0.15,0.857,0.735],[0.151,0.864,0.738],[0.155,0.873,0.74],[0.16,0.882,0.741],[0.167,0.889,0.74],[0.17,0.893,0.737],[0.173,0.901,0.738],[0.176,0.916,0.741],[0.18,0.931,0.738],[0.183,0.947,0.729],[0.186,0.958,0.72],[0.188,0.965,0.716],[0.192,0.975,0.716],[0.196,0.987,0.715],[0.199,0.996,0.712],[0.203,1.002,0.71],[0.212,1.012,0.713],[0.223,1.025,0.717],[0.236,1.037,0.717],[0.248,1.048,0.71],[0.256,1.061,0.695],[0.261,1.073,0.681],[0.265,1.083,0.668],[0.272,1.096,0.655],[0.278,1.113,0.649],[0.285,1.131,0.648],[0.293,1.147,0.644],[0.296,1.158,0.637],[0.295,1.169,0.632],[0.295,1.182,0.63],[0.299,1.2,0.622],[0.303,1.217,0.607],[0.306,1.233,0.606],[0.311,1.249,0.608],[0.317,1.265,0.609],[0.323,1.278,0.607],[0.327,1.288,0.606],[0.333,1.299,0.613],[0.343,1.311,0.617],[0.355,1.323,0.616],[0.368,1.338,0.61],[0.379,1.353,0.597],[0.384,1.367,0.579],[0.385,1.379,0.564],[0.386,1.387,0.553],[0.385,1.398,0.542],[0.386,1.412,0.535],[0.39,1.429,0.53],[0.398,1.444,0.524],[0.403,1.453,0.515],[0.405,1.458,0.508],[0.406,1.465,0.503],[0.41,1.476,0.498],[0.412,1.488,0.492],[0.414,1.5,0.494],[0.418,1.511,0.498],[0.423,1.522,0.501],[0.429,1.534,0.5],[0.431,1.548,0.502],[0.433,1.563,0.509],[0.438,1.579,0.513],[0.444,1.594,0.511],[0.452,1.608,0.499],[0.463,1.618,0.484],[0.47,1.622,0.478],[0.473,1.625,0.475],[0.475,1.625,0.471],[0.474,1.623,0.47],[0.474,1.623,0.468],[0.473,1.623,0.464],[0.473,1.623,0.462],[0.472,1.624,0.46],[0.472,1.623,0.46],[0.472,1.621,0.461],[0.472,1.62,0.463],[0.474,1.622,0.463],[0.477,1.625,0.462],[0.477,1.622,0.464],[0.476,1.618,0.465],[0.475,1.618,0.464],[0.474,1.617,0.46],[0.473,1.618,0.455],[0.472,1.62,0.453],[0.474,1.623,0.452],[0.475,1.625,0.455],[0.477,1.625,0.459],[0.479,1.624,0.464],[0.479,1.619,0.467],[0.478,1.615,0.467],[0.476,1.613,0.463],[0.473,1.613,0.457],[0.471,1.619,0.452],[0.471,1.625,0.449],[0.474,1.628,0.445],[0.478,1.63,0.448],[0.483,1.633,0.452],[0.487,1.636,0.454],[0.49,1.642,0.454],[0.494,1.649,0.447],[0.499,1.659,0.434],[0.503,1.667,0.423],[0.506,1.674,0.416],[0.508,1.684,0.409],[0.511,1.698,0.406],[0.513,1.71,0.402],[0.513,1.721,0.392],[0.512,1.729,0.387],[0.514,1.74,0.385],[0.518,1.754,0.383],[0.521,1.766,0.378],[0.52,1.778,0.373],[0.522,1.79,0.377],[0.526,1.803,0.383],[0.531,1.813,0.386],[0.537,1.826,0.385],[0.54,1.842,0.386],[0.541,1.861,0.395],[0.546,1.879,0.4],[0.551,1.896,0.397],[0.557,1.911,0.385],[0.568,1.922,0.369],[0.576,1.927,0.361],[0.578,1.928,0.36],[0.577,1.926,0.359],[0.573,1.923,0.354],[0.567,1.921,0.343],[0.562,1.924,0.334],[0.564,1.931,0.332],[0.567,1.937,0.332],[0.57,1.941,0.33],[0.574,1.944,0.327],[0.58,1.949,0.322],[0.587,1.955,0.313],[0.592,1.959,0.307],[0.595,1.963,0.302],[0.598,1.972,0.296],[0.6,1.982,0.29],[0.602,1.994,0.28],[0.603,2.003,0.271],[0.604,2.009,0.267],[0.603,2.015,0.265],[0.603,2.02,0.263],[0.604,2.024,0.262],[0.605,2.026,0.261],[0.606,2.029,0.262],[0.606,2.031,0.262],[0.606,2.033,0.261],[0.606,2.036,0.26],[0.606,2.039,0.263],[0.607,2.043,0.264],[0.607,2.047,0.265],[0.609,2.051,0.263],[0.612,2.054,0.261],[0.614,2.056,0.259],[0.616,2.057,0.257],[0.618,2.059,0.256],[0.62,2.063,0.254],[0.621,2.065,0.25],[0.621,2.068,0.248],[0.624,2.078,0.249],[0.628,2.09,0.252],[0.634,2.1,0.252],[0.638,2.108,0.257],[0.64,2.12,0.267],[0.642,2.136,0.278],[0.645,2.151,0.281],[0.649,2.166,0.276],[0.651,2.179,0.267],[0.65,2.187,0.259],[0.647,2.19,0.248],[0.647,2.195,0.244],[0.65,2.203,0.243],[0.656,2.213,0.239],[0.662,2.22,0.233],[0.669,2.226,0.23],[0.679,2.234,0.236],[0.69,2.243,0.243],[0.702,2.249,0.247],[0.711,2.256,0.245],[0.72,2.265,0.232],[0.728,2.271,0.22],[0.735,2.278,0.215],[0.742,2.287,0.216],[0.749,2.298,0.221],[0.754,2.307,0.223],[0.76,2.314,0.217],[0.767,2.322,0.214],[0.777,2.336,0.221],[0.788,2.35,0.222],[0.795,2.364,0.217],[0.799,2.376,0.205],[0.796,2.383,0.197],[0.795,2.394,0.206],[0.799,2.406,0.219],[0.805,2.419,0.222],[0.81,2.431,0.217],[0.812,2.442,0.219],[0.812,2.455,0.23],[0.813,2.469,0.239],[0.816,2.484,0.24],[0.821,2.498,0.235],[0.829,2.511,0.225],[0.838,2.521,0.211],[0.848,2.529,0.189],[0.861,2.537,0.173],[0.868,2.549,0.18],[0.872,2.564,0.19],[0.877,2.578,0.196],[0.882,2.593,0.191]],"quat":[[0.8186,0.0,0.0,0.5743],[0.8162,-0.0017,-0.0031,0.5777],[0.8133,0.0093,0.0073,0.5817],[0.813,0.0248,0.0036,0.5817],[0.8179,0.0324,0.0043,0.5745],[0.8237,0.0291,-0.002,0.5663],[0.8267,0.0277,-0.0067,0.5619],[0.8277,0.0205,-0.0114,0.5606],[0.8269,0.0081,-0.0121,0.5622],[0.8261,0.0006,-0.0063,0.5634],[0.8257,0.0093,0.0156,0.5638],[0.8265,0.0103,0.0185,0.5625],[0.8279,0.0094,0.0128,0.5607],[0.8302,0.0061,0.0147,0.5573],[0.8333,0.0188,0.0136,0.5523],[0.8382,0.0164,0.0066,0.5451],[0.8394,0.0043,0.0,0.5435],[0.8354,0.0029,-0.0066,0.5496],[0.8325,-0.0052,-0.0059,0.554],[0.8304,0.001,0.0065,0.5572],[0.8285,0.0041,0.015,0.5598],[0.8299,0.004,0.0229,0.5575],[0.8329,0.0049,0.0285,0.5526],[0.8332,0.0085,0.0146,0.5527],[0.832,0.0125,0.0067,0.5545],[0.8351,0.0298,0.0031,0.5492],[0.8368,0.0298,0.0004,0.5466],[0.8358,0.0179,0.0006,0.5488],[0.8319,0.0167,0.0001,0.5546],[0.826,0.0176,0.0121,0.5632],[0.8245,0.012,0.0118,0.5657],[0.8259,0.0141,0.0071,0.5636],[0.829,0.0157,0.0037,0.5589],[0.8346,0.013,-0.0053,0.5506],[0.8387,0.0042,-0.0045,0.5445],[0.8415,0.0116,-0.0001,0.5401],[0.8432,0.0267,-0.005,0.5369],[0.8408,0.0247,-0.0143,0.5406],[0.8354,0.0107,-0.0137,0.5493],[0.8296,-0.0082,-0.0031,0.5583],[0.8218,-0.0485,0.0007,0.5677],[0.8115,-0.0663,-0.0015,0.5805],[0.8071,-0.0651,0.0005,0.5868],[0.8058,-0.0644,0.0097,0.5886],[0.8044,-0.0683,0.0266,0.5896],[0.8081,-0.06,0.039,0.5846],[0.8114,-0.0512,0.0484,0.5802],[0.8111,-0.0502,0.0552,0.5801],[0.8103,-0.055,0.0541,0.581],[0.8085,-0.059,0.0457,0.5837],[0.8076,-0.0772,0.0402,0.5833],[0.807,-0.0923,0.0354,0.5822],[0.8097,-0.0945,0.0296,0.5785],[0.8103,-0.0916,0.026,0.5783],[0.8085,-0.088,0.0311,0.5811],[0.8067,-0.0767,0.0445,0.5842],[0.8089,-0.0567,0.0498,0.5831],[0.8072,-0.0589,0.0517,0.5851],[0.8033,-0.0622,0.0513,0.59],[0.7984,-0.0614,0.0469,0.5971],[0.7967,-0.0626,0.0425,0.5996],[0.7964,-0.0509,0.0403,0.6013],[0.7959,-0.0362,0.0446,0.6028],[0.797,-0.0198,0.0562,0.601],[0.8017,-0.0115,0.0618,0.5944],[0.8044,-0.0128,0.0551,0.5914],[0.8037,-0.0182,0.0576,0.5919],[0.8002,-0.0298,0.0687,0.595],[0.7991,-0.0347,0.0716,0.596],[0.7954,-0.0423,0.0761,0.5998],[0.7952,-0.0392,0.085,0.599],[0.7974,-0.0383,0.0894,0.5956],[0.7964,-0.0384,0.0937,0.5962],[0.7941,-0.0406,0.0979,0.5985],[0.7936,-0.046,0.104,0.5977],[0.7942,-0.052,0.1043,0.5964],[0.793,-0.0629,0.1073,0.5963],[0.791,-0.0702,0.1121,0.5974],[0.7909,-0.0711,0.1102,0.5978],[0.7897,-0.0762,0.1055,0.5995],[0.7865,-0.0866,0.1083,0.6018],[0.7818,-0.1039,0.1093,0.6051],[0.7849,-0.1037,0.0994,0.6027],[0.7864,-0.1074,0.0883,0.6019],[0.7886,-0.1123,0.088,0.5981],[0.794,-0.1147,0.0921,0.5899],[0.7945,-0.1135,0.1039,0.5874],[0.7935,-0.1163,0.1223,0.5848],[0.7932,-0.119,0.1382,0.5811],[0.796,-0.1186,0.1431,0.576],[0.7963,-0.115,0.1451,0.5758],[0.7932,-0.1152,0.1436,0.5805],[0.79,-0.1197,0.1373,0.5855],[0.7899,-0.1356,0.1194,0.586],[0.7924,-0.1402,0.1044,0.5844],[0.7974,-0.1351,0.0917,0.5809],[0.7979,-0.128,0.0924,0.5818],[0.7948,-0.1193,0.1078,0.5852],[0.7994,-0.101,0.1049,0.5829],[0.8048,-0.0844,0.1003,0.5789],[0.8042,-0.0792,0.0971,0.5809],[0.8018,-0.0815,0.0971,0.5839],[0.798,-0.0858,0.1061,0.587],[0.7974,-0.0781,0.129,0.5843],[0.7982,-0.0719,0.1452,0.5802],[0.7959,-0.0721,0.1431,0.5838],[0.7924,-0.0758,0.1466,0.5873],[0.7897,-0.0794,0.1566,0.5878],[0.7876,-0.0845,0.156,0.5901],[0.7817,-0.0942,0.151,0.5977],[0.7773,-0.1004,0.1411,0.6048],[0.777,-0.0891,0.1394,0.6073],[0.7784,-0.0937,0.1324,0.6064],[0.7778,-0.1006,0.1225,0.6082],[0.7806,-0.0981,0.1113,0.6071],[0.7859,-0.0996,0.1003,0.602],[0.7856,-0.1258,0.0925,0.5987],[0.7935,-0.1298,0.0803,0.5891],[0.8011,-0.1273,0.0724,0.5803],[0.7995,-0.116,0.0961,0.5814],[0.804,-0.0817,0.0769,0.5839],[0.7983,-0.0737,0.0703,0.5936],[0.7911,-0.0685,0.0595,0.605],[0.7918,-0.074,0.049,0.6043],[0.7934,-0.0809,0.0545,0.6008],[0.7967,-0.0713,0.0726,0.5957],[0.8013,-0.0701,0.0927,0.5868],[0.8056,-0.0748,0.1164,0.5761],[0.8043,-0.0748,0.134,0.5741],[0.7982,-0.0516,0.1527,0.5805],[0.7985,-0.0637,0.1373,0.5827],[0.7993,-0.0669,0.1264,0.5836],[0.8038,-0.0687,0.1211,0.5783],[0.8053,-0.0828,0.13,0.5725],[0.8003,-0.0945,0.1314,0.5774],[0.7952,-0.1011,0.128,0.584],[0.7948,-0.0959,0.1169,0.5878],[0.7944,-0.0998,0.1048,0.5899],[0.7897,-0.1161,0.0885,0.5959],[0.7928,-0.1202,0.0806,0.5921],[0.799,-0.1155,0.0875,0.5837],[0.8035,-0.1138,0.1109,0.5738],[0.8082,-0.1058,0.1038,0.5699],[0.81,-0.1052,0.0899,0.5699],[0.8079,-0.1016,0.0713,0.5761],[0.8041,-0.1014,0.0525,0.5834],[0.8002,-0.1128,0.0432,0.5875],[0.799,-0.1095,0.0425,0.5897],[0.7987,-0.1039,0.0465,0.5909],[0.7984,-0.0985,0.0638,0.5906],[0.8018,-0.0923,0.0862,0.5841],[0.8067,-0.0799,0.1094,0.5752],[0.8049,-0.064,0.116,0.5785],[0.8021,-0.0538,0.1168,0.5832],[0.7974,-0.0404,0.1288,0.5882],[0.7955,-0.035,0.1322,0.5903],[0.7972,-0.0345,0.1253,0.5896],[0.7992,-0.0332,0.117,0.5886],[0.8012,-0.0339,0.1098,0.5873],[0.804,-0.0373,0.1048,0.5842],[0.8075,-0.0418,0.1044,0.579],[0.8063,-0.0437,0.1099,0.5795],[0.8057,-0.0464,0.1109,0.58],[0.8083,-0.0511,0.1068,0.5767],[0.808,-0.0524,0.1055,0.5772],[0.8008,-0.0535,0.1139,0.5855],[0.7965,-0.0539,0.1187,0.5905],[0.7991,-0.0506,0.1103,0.5888],[0.8025,-0.043,0.0999,0.5866],[0.8067,-0.0386,0.0918,0.5826],[0.8122,-0.0378,0.0883,0.5754],[0.8171,-0.0418,0.0884,0.5681],[0.8161,-0.0479,0.0957,0.5679],[0.8117,-0.0555,0.1061,0.5716],[0.8047,-0.0615,0.1143,0.5794],[0.7948,-0.0632,0.1204,0.5914],[0.7911,-0.0608,0.1184,0.5971],[0.7936,-0.05,0.1058,0.5971],[0.8012,-0.03,0.0898,0.5909],[0.8061,-0.0362,0.0815,0.585],[0.8086,-0.0485,0.0804,0.5808],[0.8125,-0.0579,0.0882,0.5733],[0.8135,-0.0652,0.0951,0.5701],[0.8123,-0.0733,0.0966,0.5706],[0.8102,-0.0777,0.0958,0.5731],[0.8089,-0.0814,0.0967,0.5742],[0.8091,-0.0727,0.0982,0.5748],[0.8086,-0.0568,0.1055,0.576],[0.8083,-0.0547,0.1085,0.5761],[0.8072,-0.0659,0.1081,0.5765],[0.8051,-0.0778,0.1105,0.5776],[0.8035,-0.0779,0.1064,0.5805],[0.7967,-0.0832,0.1033,0.5896],[0.79,-0.105,0.1011,0.5955],[0.7908,-0.1114,0.0867,0.5956],[0.7954,-0.115,0.083,0.5893],[0.8028,-0.1112,0.0853,0.5795],[0.8072,-0.115,0.1026,0.5698],[0.8108,-0.1142,0.1254,0.5602],[0.8177,-0.0971,0.1134,0.5559],[0.8198,-0.0971,0.0971,0.556],[0.8181,-0.0971,0.0821,0.5608],[0.8145,-0.1015,0.0566,0.5684],[0.8091,-0.1141,0.0462,0.5746],[0.805,-0.1142,0.0401,0.5808],[0.804,-0.1123,0.0385,0.5826],[0.8038,-0.1108,0.0481,0.5825],[0.8066,-0.106,0.0652,0.5778],[0.8108,-0.0944,0.0911,0.5705],[0.8124,-0.0686,0.1081,0.5688],[0.81,-0.0532,0.1105,0.5735],[0.8073,-0.0461,0.1173,0.5765],[0.8071,-0.0565,0.1112,0.5771],[0.8058,-0.0772,0.0933,0.5797],[0.807,-0.0823,0.0825,0.5789],[0.8111,-0.0793,0.0819,0.5738],[0.8097,-0.0817,0.0871,0.5746],[0.8071,-0.0769,0.0857,0.5791],[0.8046,-0.0737,0.0924,0.5819],[0.8043,-0.07,0.1012,0.5814],[0.8016,-0.0588,0.1035,0.5858],[0.7994,-0.06,0.1031,0.5888],[0.7997,-0.0687,0.098,0.5883],[0.8,-0.0787,0.0973,0.5868],[0.7964,-0.0886,0.0954,0.5906],[0.7911,-0.1026,0.0938,0.5957],[0.7898,-0.1121,0.091,0.5961],[0.7944,-0.1158,0.092,0.5891],[0.8003,-0.118,0.0938,0.5804],[0.8062,-0.119,0.0972,0.5713],[0.8096,-0.119,0.0995,0.5662],[0.8102,-0.1207,0.101,0.5647],[0.8113,-0.1219,0.1,0.5629],[0.8117,-0.1213,0.0987,0.5627],[0.8112,-0.1243,0.1028,0.562],[0.809,-0.1303,0.1134,0.5618],[0.8084,-0.1224,0.1191,0.5633],[0.8117,-0.1119,0.1214,0.5603],[0.8138,-0.1089,0.1205,0.558],[0.8142,-0.1093,0.1141,0.5586],[0.8136,-0.1109,0.1063,0.5607],[0.8142,-0.1202,0.0993,0.5593],[0.8135,-0.1339,0.0937,0.5582],[0.813,-0.1441,0.0896,0.5569],[0.8118,-0.1469,0.0901,0.5579],[0.8153,-0.1401,0.0961,0.5536],[0.8215,-0.1258,0.0977,0.5476],[0.8231,-0.1197,0.0961,0.5467],[0.8221,-0.1165,0.0916,0.5498],[0.8198,-0.1267,0.085,0.5519],[0.819,-0.1413,0.0778,0.5507],[0.8213,-0.1342,0.073,0.5497],[0.823,-0.1208,0.0687,0.5508],[0.8187,-0.1123,0.0768,0.5578],[0.8164,-0.1111,0.0851,0.5603],[0.819,-0.1245,0.0812,0.5543],[0.822,-0.1139,0.0707,0.5534],[0.8279,-0.0915,0.0642,0.5497],[0.8379,-0.062,0.07,0.5378],[0.8413,-0.062,0.0761,0.5316],[0.8386,-0.07,0.0775,0.5346],[0.8423,-0.0769,0.0801,0.5274],[0.8495,-0.0787,0.0898,0.5139],[0.8502,-0.0872,0.0867,0.5119],[0.8487,-0.0929,0.0874,0.5132],[0.8465,-0.0922,0.0936,0.5159],[0.8447,-0.0928,0.1018,0.5173],[0.8433,-0.0833,0.1062,0.5203],[0.8427,-0.0553,0.0868,0.5284],[0.8435,-0.0434,0.0791,0.5296],[0.8425,-0.0569,0.0738,0.5306],[0.8396,-0.0637,0.068,0.5351],[0.8369,-0.0638,0.0636,0.5399],[0.8366,-0.059,0.0674,0.5405],[0.8396,-0.0465,0.0812,0.535],[0.8421,-0.0405,0.0744,0.5327],[0.8408,-0.0351,0.0757,0.5349],[0.8441,-0.0378,0.0773,0.5292],[0.8507,-0.0399,0.0738,0.5189],[0.8572,-0.0362,0.0246,0.5132],[0.862,-0.026,0.0082,0.5062],[0.8632,-0.038,-0.0025,0.5035],[0.8574,-0.0628,-0.0121,0.5106],[0.8495,-0.0665,-0.0317,0.5224],[0.8475,-0.0794,-0.0378,0.5234],[0.8497,-0.0709,-0.0393,0.521],[0.8486,-0.0665,-0.0388,0.5234],[0.8463,-0.0664,-0.039,0.5271],[0.8459,-0.0664,-0.041,0.5277],[0.8454,-0.0703,-0.0356,0.5282],[0.8469,-0.0526,-0.0257,0.5284],[0.8491,-0.0041,-0.0317,0.5273],[0.8532,0.0298,-0.0202,0.5204],[0.8559,0.032,-0.0214,0.5157],[0.8559,0.0298,-0.0237,0.5158],[0.8537,0.0216,-0.0265,0.5196],[0.8507,0.0077,-0.0234,0.5251]],"q":[[-0.032,-0.551,1.779,-0.093,-0.506,1.698,-0.077,-0.492,1.738,0.033,-0.515,1.796,-0.036,-0.525,1.706,-0.011,-0.568,1.684,-0.033,-0.528,1.73,0.022,-0.482,1.672],[-0.01,-0.502,1.744,-0.045,-0.516,1.729,-0.004,-0.518,1.724,0.032,-0.46,1.749,-0.02,-0.518,1.711,-0.022,-0.497,1.694,0.005,-0.535,1.731,0.0,-0.48,1.689],[-0.003,-0.45,1.782,-0.021,-0.546,1.802,0.129,-0.622,1.753,0.015,-0.438,1.762,-0.038,-0.568,1.754,-0.086,-0.484,1.719,0.083,-0.6,1.763,-0.044,-0.461,1.7],[-0.027,-0.414,1.837,-0.026,-0.58,1.85,0.203,-0.655,1.798,-0.041,-0.447,1.727,-0.068,-0.569,1.807,-0.154,-0.517,1.74,0.165,-0.611,1.794,-0.058,-0.506,1.676],[-0.082,-0.405,1.891,-0.047,-0.631,1.884,0.208,-0.584,1.845,-0.11,-0.442,1.68,-0.082,-0.548,1.813,-0.192,-0.556,1.771,0.187,-0.589,1.816,-0.054,-0.525,1.647],[-0.148,-0.424,1.94,-0.042,-0.693,1.905,0.167,-0.458,1.863,-0.156,-0.458,1.656,-0.1,-0.489,1.815,-0.182,-0.572,1.813,0.17,-0.573,1.799,-0.035,-0.536,1.664],[-0.204,-0.407,2.002,-0.01,-0.735,1.901,0.107,-0.432,1.849,-0.182,-0.447,1.638,-0.114,-0.447,1.813,-0.141,-0.593,1.835,0.148,-0.526,1.761,-0.014,-0.528,1.7],[-0.255,-0.396,2.051,0.042,-0.719,1.893,0.061,-0.431,1.827,-0.187,-0.426,1.616,-0.132,-0.406,1.82,-0.095,-0.611,1.835,0.109,-0.466,1.726,0.001,-0.502,1.725],[-0.3,-0.428,2.087,0.092,-0.613,1.903,0.04,-0.464,1.828,-0.169,-0.432,1.633,-0.147,-0.412,1.852,-0.051,-0.603,1.82,0.069,-0.429,1.712,-0.013,-0.456,1.712],[-0.33,-0.492,2.136,0.107,-0.472,1.926,0.058,-0.517,1.838,-0.146,-0.468,1.693,-0.165,-0.485,1.853,-0.025,-0.564,1.81,0.045,-0.454,1.711,-0.032,-0.424,1.675],[-0.345,-0.515,2.141,0.086,-0.433,1.928,0.104,-0.569,1.841,-0.1,-0.516,1.773,-0.16,-0.573,1.824,-0.042,-0.508,1.821,0.061,-0.543,1.724,-0.034,-0.391,1.613],[-0.319,-0.54,2.127,0.009,-0.404,1.922,0.162,-0.577,1.839,-0.068,-0.524,1.836,-0.149,-0.579,1.806,-0.093,-0.507,1.843,0.118,-0.63,1.759,-0.068,-0.351,1.544],[-0.272,-0.546,2.098,-0.084,-0.433,1.947,0.205,-0.53,1.841,-0.074,-0.461,1.856,-0.148,-0.557,1.789,-0.15,-0.514,1.873,0.174,-0.664,1.799,-0.119,-0.368,1.537],[-0.243,-0.528,2.098,-0.16,-0.552,1.981,0.196,-0.443,1.843,-0.106,-0.442,1.847,-0.159,-0.528,1.795,-0.182,-0.567,1.915,0.202,-0.625,1.838,-0.148,-0.431,1.566],[-0.25,-0.482,2.106,-0.164,-0.758,1.94,0.125,-0.389,1.815,-0.164,-0.42,1.801,-0.187,-0.515,1.808,-0.187,-0.601,1.902,0.207,-0.544,1.853,-0.112,-0.537,1.633],[-0.263,-0.43,2.078,-0.062,-0.909,1.88,0.048,-0.352,1.778,-0.198,-0.371,1.715,-0.191,-0.439,1.8,-0.149,-0.647,1.875,0.175,-0.472,1.811,-0.042,-0.624,1.737],[-0.283,-0.379,2.05,0.098,-0.879,1.866,0.01,-0.37,1.788,-0.194,-0.341,1.647,-0.194,-0.381,1.81,-0.079,-0.664,1.829,0.115,-0.388,1.777,-0.009,-0.606,1.838],[-0.316,-0.369,2.065,0.224,-0.691,1.905,0.032,-0.45,1.845,-0.178,-0.364,1.642,-0.2,-0.392,1.857,-0.018,-0.632,1.778,0.041,-0.376,1.764,-0.01,-0.488,1.876],[-0.344,-0.417,2.119,0.255,-0.456,1.949,0.075,-0.591,1.878,-0.165,-0.419,1.686,-0.189,-0.512,1.888,-0.014,-0.537,1.79,0.003,-0.421,1.741,-0.037,-0.393,1.831],[-0.342,-0.417,2.146,0.236,-0.379,1.96,0.157,-0.713,1.88,-0.111,-0.493,1.784,-0.158,-0.628,1.851,-0.062,-0.433,1.841,0.056,-0.545,1.725,-0.05,-0.352,1.753],[-0.295,-0.419,2.127,0.179,-0.335,1.967,0.253,-0.793,1.88,-0.068,-0.547,1.903,-0.12,-0.624,1.789,-0.138,-0.405,1.867,0.152,-0.661,1.758,-0.093,-0.311,1.686],[-0.229,-0.412,2.098,0.092,-0.335,2.004,0.32,-0.775,1.892,-0.062,-0.514,1.941,-0.1,-0.566,1.736,-0.197,-0.434,1.894,0.222,-0.702,1.799,-0.15,-0.314,1.701],[-0.208,-0.401,2.119,-0.011,-0.39,2.063,0.358,-0.68,1.906,-0.062,-0.46,1.956,-0.091,-0.49,1.712,-0.239,-0.485,1.917,0.265,-0.693,1.838,-0.19,-0.34,1.737],[-0.202,-0.406,2.154,-0.103,-0.491,2.061,0.333,-0.551,1.914,-0.065,-0.428,1.962,-0.119,-0.444,1.708,-0.258,-0.529,1.9,0.284,-0.646,1.866,-0.209,-0.402,1.748],[-0.191,-0.409,2.179,-0.158,-0.622,2.015,0.245,-0.407,1.916,-0.093,-0.446,1.968,-0.154,-0.434,1.703,-0.234,-0.609,1.868,0.262,-0.577,1.884,-0.211,-0.476,1.743],[-0.184,-0.41,2.11,-0.141,-0.753,1.957,0.172,-0.35,1.884,-0.146,-0.432,1.93,-0.174,-0.407,1.704,-0.195,-0.663,1.855,0.217,-0.523,1.886,-0.169,-0.559,1.75],[-0.174,-0.408,2.016,-0.054,-0.833,1.899,0.097,-0.313,1.84,-0.158,-0.387,1.848,-0.183,-0.365,1.719,-0.159,-0.671,1.838,0.171,-0.479,1.865,-0.124,-0.625,1.793],[-0.154,-0.364,1.955,0.058,-0.798,1.875,0.055,-0.337,1.834,-0.134,-0.364,1.785,-0.189,-0.364,1.763,-0.119,-0.645,1.8,0.112,-0.436,1.843,-0.092,-0.632,1.855],[-0.14,-0.329,1.931,0.165,-0.651,1.878,0.052,-0.451,1.828,-0.109,-0.397,1.772,-0.198,-0.423,1.814,-0.094,-0.577,1.763,0.06,-0.465,1.778,-0.063,-0.575,1.895],[-0.118,-0.342,1.915,0.212,-0.468,1.894,0.092,-0.622,1.819,-0.09,-0.461,1.798,-0.182,-0.55,1.792,-0.109,-0.498,1.766,0.05,-0.539,1.753,-0.074,-0.512,1.89],[-0.057,-0.314,1.921,0.178,-0.414,1.904,0.178,-0.757,1.814,-0.046,-0.541,1.869,-0.142,-0.667,1.724,-0.147,-0.493,1.783,0.079,-0.641,1.76,-0.109,-0.47,1.836],[-0.003,-0.299,1.942,0.106,-0.375,1.888,0.28,-0.801,1.813,-0.021,-0.574,1.935,-0.089,-0.68,1.629,-0.191,-0.458,1.787,0.127,-0.723,1.785,-0.141,-0.436,1.775],[0.054,-0.309,1.929,0.03,-0.372,1.893,0.356,-0.755,1.828,-0.008,-0.571,1.96,-0.038,-0.616,1.537,-0.22,-0.456,1.806,0.155,-0.765,1.815,-0.166,-0.443,1.756],[0.125,-0.319,1.897,-0.048,-0.435,1.936,0.381,-0.626,1.841,0.006,-0.548,1.95,0.005,-0.502,1.482,-0.227,-0.472,1.831,0.175,-0.767,1.843,-0.181,-0.489,1.777],[0.172,-0.315,1.878,-0.094,-0.535,1.966,0.35,-0.498,1.843,-0.001,-0.542,1.944,0.026,-0.397,1.475,-0.221,-0.502,1.852,0.191,-0.723,1.873,-0.183,-0.548,1.795],[0.2,-0.261,1.87,-0.107,-0.664,1.905,0.303,-0.468,1.838,-0.044,-0.515,1.907,0.016,-0.367,1.492,-0.219,-0.532,1.828,0.193,-0.644,1.898,-0.146,-0.636,1.827],[0.226,-0.201,1.826,-0.06,-0.772,1.823,0.23,-0.411,1.813,-0.086,-0.491,1.851,-0.003,-0.334,1.501,-0.194,-0.555,1.76,0.14,-0.557,1.903,-0.082,-0.727,1.873],[0.23,-0.155,1.767,0.053,-0.762,1.777,0.182,-0.413,1.795,-0.072,-0.488,1.794,-0.012,-0.287,1.506,-0.13,-0.571,1.694,0.071,-0.528,1.894,-0.035,-0.74,1.908],[0.236,-0.118,1.73,0.157,-0.649,1.776,0.17,-0.475,1.792,-0.034,-0.503,1.764,0.001,-0.299,1.489,-0.077,-0.532,1.641,0.003,-0.522,1.883,-0.011,-0.692,1.927],[0.237,-0.085,1.738,0.216,-0.509,1.793,0.189,-0.585,1.791,0.005,-0.559,1.768,0.015,-0.37,1.475,-0.071,-0.467,1.628,-0.018,-0.566,1.821,-0.0,-0.609,1.918],[0.218,-0.067,1.769,0.237,-0.395,1.82,0.209,-0.74,1.824,0.062,-0.612,1.761,0.03,-0.4,1.461,-0.105,-0.486,1.687,0.027,-0.638,1.785,-0.006,-0.53,1.899],[0.177,-0.083,1.825,0.217,-0.402,1.837,0.218,-0.799,1.813,0.099,-0.632,1.736,0.045,-0.377,1.431,-0.182,-0.471,1.708,0.081,-0.701,1.787,0.001,-0.482,1.872],[0.149,-0.141,1.857,0.176,-0.392,1.839,0.198,-0.784,1.789,0.093,-0.638,1.743,0.062,-0.343,1.403,-0.251,-0.487,1.725,0.106,-0.71,1.813,-0.009,-0.475,1.824],[0.137,-0.191,1.857,0.125,-0.404,1.837,0.18,-0.772,1.778,0.077,-0.637,1.77,0.073,-0.289,1.399,-0.285,-0.533,1.744,0.109,-0.692,1.846,-0.005,-0.473,1.788],[0.107,-0.197,1.855,0.092,-0.472,1.823,0.175,-0.761,1.781,0.087,-0.614,1.769,0.079,-0.214,1.405,-0.296,-0.58,1.744,0.127,-0.67,1.861,0.009,-0.501,1.78],[0.101,-0.189,1.877,0.069,-0.583,1.797,0.143,-0.709,1.773,0.073,-0.547,1.729,0.068,-0.133,1.448,-0.297,-0.616,1.728,0.134,-0.625,1.861,0.044,-0.575,1.805],[0.042,-0.149,1.863,0.11,-0.712,1.762,0.106,-0.639,1.752,0.032,-0.469,1.674,0.035,-0.13,1.488,-0.279,-0.628,1.692,0.122,-0.601,1.839,0.087,-0.655,1.852],[-0.013,-0.12,1.839,0.201,-0.745,1.735,0.077,-0.591,1.727,0.005,-0.43,1.64,-0.001,-0.135,1.528,-0.244,-0.621,1.654,0.093,-0.575,1.799,0.115,-0.678,1.901],[-0.065,-0.115,1.855,0.298,-0.679,1.723,0.045,-0.593,1.714,0.004,-0.442,1.619,-0.011,-0.146,1.569,-0.188,-0.605,1.608,0.049,-0.54,1.764,0.157,-0.627,1.924],[-0.119,-0.129,1.895,0.355,-0.528,1.732,0.026,-0.64,1.721,0.017,-0.498,1.625,-0.004,-0.196,1.582,-0.16,-0.575,1.578,-0.001,-0.529,1.736,0.181,-0.525,1.902],[-0.171,-0.195,1.946,0.351,-0.359,1.77,0.04,-0.713,1.743,0.037,-0.568,1.644,-0.0,-0.284,1.573,-0.153,-0.54,1.577,-0.034,-0.551,1.709,0.16,-0.46,1.861],[-0.211,-0.256,1.983,0.295,-0.279,1.795,0.082,-0.768,1.756,0.082,-0.643,1.694,0.012,-0.344,1.544,-0.149,-0.504,1.593,-0.026,-0.633,1.708,0.133,-0.387,1.803],[-0.223,-0.295,1.949,0.23,-0.252,1.8,0.139,-0.798,1.784,0.126,-0.697,1.746,0.028,-0.357,1.51,-0.142,-0.479,1.606,0.0,-0.721,1.735,0.108,-0.34,1.73],[-0.206,-0.354,1.906,0.169,-0.223,1.815,0.174,-0.808,1.809,0.167,-0.711,1.793,0.067,-0.3,1.47,-0.163,-0.465,1.595,0.052,-0.769,1.772,0.075,-0.323,1.665],[-0.178,-0.38,1.88,0.124,-0.238,1.854,0.143,-0.807,1.813,0.167,-0.66,1.8,0.088,-0.224,1.467,-0.208,-0.493,1.595,0.087,-0.75,1.8,0.038,-0.348,1.652],[-0.182,-0.324,1.889,0.087,-0.32,1.855,0.122,-0.786,1.822,0.112,-0.582,1.77,0.065,-0.182,1.514,-0.243,-0.576,1.592,0.078,-0.678,1.826,0.025,-0.407,1.648],[-0.237,-0.244,1.905,0.094,-0.445,1.815,0.081,-0.717,1.796,0.053,-0.549,1.726,0.009,-0.213,1.567,-0.23,-0.632,1.553,0.053,-0.618,1.819,0.037,-0.464,1.639],[-0.288,-0.21,1.894,0.145,-0.516,1.788,0.053,-0.677,1.752,0.005,-0.507,1.68,-0.015,-0.204,1.599,-0.181,-0.662,1.513,0.004,-0.585,1.787,0.078,-0.508,1.651],[-0.337,-0.202,1.905,0.232,-0.492,1.784,0.033,-0.658,1.715,-0.009,-0.492,1.666,-0.036,-0.202,1.639,-0.119,-0.649,1.484,-0.058,-0.55,1.756,0.111,-0.504,1.683],[-0.387,-0.206,1.937,0.274,-0.374,1.784,0.045,-0.703,1.728,0.01,-0.524,1.667,-0.025,-0.29,1.65,-0.066,-0.58,1.487,-0.121,-0.543,1.703,0.114,-0.471,1.699],[-0.43,-0.253,1.97,0.275,-0.25,1.769,0.071,-0.778,1.736,0.042,-0.58,1.694,-0.014,-0.416,1.604,-0.061,-0.538,1.513,-0.142,-0.572,1.641,0.081,-0.458,1.659],[-0.409,-0.316,1.932,0.236,-0.179,1.754,0.112,-0.84,1.744,0.109,-0.644,1.741,-0.006,-0.465,1.498,-0.05,-0.462,1.566,-0.11,-0.661,1.638,0.057,-0.452,1.603],[-0.337,-0.399,1.879,0.196,-0.108,1.743,0.148,-0.819,1.757,0.16,-0.657,1.778,0.019,-0.418,1.39,-0.062,-0.411,1.604,-0.079,-0.729,1.66,0.034,-0.46,1.552],[-0.238,-0.45,1.806,0.144,-0.078,1.763,0.154,-0.722,1.762,0.212,-0.628,1.792,0.046,-0.313,1.329,-0.066,-0.419,1.599,-0.073,-0.745,1.675,0.02,-0.52,1.542],[-0.127,-0.451,1.72,0.054,-0.123,1.793,0.13,-0.612,1.743,0.224,-0.608,1.765,0.074,-0.263,1.36,-0.074,-0.444,1.571,-0.088,-0.751,1.681,0.019,-0.595,1.568],[-0.023,-0.389,1.653,-0.035,-0.245,1.706,0.111,-0.535,1.716,0.207,-0.619,1.727,0.09,-0.28,1.415,-0.095,-0.42,1.566,-0.104,-0.756,1.691,0.055,-0.64,1.606],[0.02,-0.281,1.621,-0.041,-0.343,1.65,0.108,-0.52,1.699,0.198,-0.59,1.682,0.088,-0.31,1.445,-0.107,-0.407,1.566,-0.125,-0.73,1.673,0.096,-0.681,1.643],[0.012,-0.183,1.621,0.005,-0.361,1.643,0.121,-0.559,1.704,0.197,-0.553,1.643,0.076,-0.367,1.456,-0.115,-0.389,1.551,-0.149,-0.698,1.643,0.109,-0.685,1.699],[-0.002,-0.165,1.634,0.056,-0.326,1.652,0.133,-0.579,1.709,0.184,-0.562,1.636,0.064,-0.403,1.468,-0.117,-0.361,1.549,-0.16,-0.691,1.617,0.11,-0.669,1.736],[0.017,-0.189,1.629,0.085,-0.318,1.674,0.155,-0.597,1.701,0.189,-0.588,1.648,0.066,-0.44,1.419,-0.128,-0.369,1.561,-0.164,-0.697,1.62,0.09,-0.665,1.731],[0.046,-0.195,1.668,0.066,-0.324,1.693,0.154,-0.596,1.707,0.207,-0.591,1.672,0.071,-0.47,1.391,-0.137,-0.392,1.586,-0.164,-0.725,1.62,0.079,-0.663,1.705],[0.055,-0.2,1.693,0.023,-0.321,1.694,0.159,-0.568,1.716,0.203,-0.584,1.673,0.068,-0.465,1.386,-0.148,-0.405,1.609,-0.153,-0.74,1.62,0.066,-0.653,1.678],[0.07,-0.205,1.673,0.001,-0.328,1.698,0.168,-0.526,1.723,0.208,-0.588,1.676,0.095,-0.423,1.378,-0.17,-0.433,1.639,-0.125,-0.766,1.619,0.045,-0.65,1.665],[0.076,-0.215,1.661,-0.009,-0.351,1.714,0.157,-0.477,1.733,0.209,-0.583,1.666,0.113,-0.375,1.39,-0.192,-0.459,1.661,-0.103,-0.775,1.62,0.039,-0.661,1.668],[0.094,-0.22,1.657,-0.024,-0.385,1.733,0.141,-0.424,1.745,0.199,-0.575,1.655,0.111,-0.335,1.409,-0.2,-0.487,1.679,-0.109,-0.772,1.613,0.055,-0.7,1.686],[0.143,-0.219,1.638,-0.048,-0.41,1.705,0.127,-0.388,1.754,0.186,-0.582,1.647,0.115,-0.35,1.426,-0.206,-0.489,1.683,-0.115,-0.762,1.606,0.072,-0.75,1.723],[0.157,-0.198,1.634,-0.05,-0.446,1.671,0.107,-0.375,1.75,0.176,-0.58,1.635,0.113,-0.369,1.439,-0.215,-0.487,1.681,-0.122,-0.74,1.599,0.084,-0.764,1.742],[0.147,-0.167,1.635,-0.043,-0.475,1.664,0.086,-0.371,1.735,0.168,-0.564,1.617,0.103,-0.378,1.439,-0.228,-0.491,1.678,-0.134,-0.72,1.586,0.104,-0.774,1.762],[0.122,-0.187,1.647,-0.005,-0.505,1.61,0.049,-0.322,1.732,0.147,-0.571,1.599,0.089,-0.356,1.43,-0.222,-0.512,1.681,-0.149,-0.715,1.565,0.109,-0.81,1.776],[0.093,-0.214,1.64,0.048,-0.531,1.575,0.001,-0.275,1.72,0.126,-0.584,1.57,0.074,-0.341,1.439,-0.201,-0.538,1.687,-0.174,-0.696,1.537,0.117,-0.833,1.794],[0.072,-0.223,1.615,0.079,-0.522,1.555,-0.019,-0.292,1.717,0.117,-0.568,1.529,0.06,-0.336,1.438,-0.199,-0.533,1.691,-0.2,-0.671,1.522,0.139,-0.839,1.811],[0.037,-0.212,1.64,0.078,-0.51,1.544,-0.018,-0.333,1.72,0.118,-0.549,1.485,0.055,-0.344,1.461,-0.226,-0.505,1.689,-0.201,-0.635,1.522,0.157,-0.827,1.827],[-0.02,-0.209,1.675,0.058,-0.498,1.524,-0.013,-0.383,1.705,0.084,-0.561,1.448,0.048,-0.333,1.504,-0.239,-0.497,1.683,-0.211,-0.628,1.5,0.19,-0.789,1.823],[-0.082,-0.234,1.72,0.047,-0.435,1.496,-0.011,-0.452,1.723,0.071,-0.605,1.438,0.042,-0.33,1.541,-0.199,-0.495,1.656,-0.228,-0.64,1.497,0.188,-0.727,1.77],[-0.131,-0.266,1.754,0.018,-0.384,1.471,0.021,-0.503,1.735,0.109,-0.651,1.47,0.014,-0.391,1.528,-0.168,-0.489,1.639,-0.224,-0.666,1.502,0.175,-0.681,1.706],[-0.176,-0.279,1.766,-0.03,-0.362,1.46,0.056,-0.5,1.721,0.151,-0.678,1.506,-0.003,-0.445,1.497,-0.173,-0.495,1.646,-0.215,-0.708,1.512,0.173,-0.637,1.649],[-0.188,-0.309,1.763,-0.05,-0.349,1.471,0.031,-0.462,1.702,0.16,-0.678,1.536,-0.017,-0.447,1.46,-0.198,-0.526,1.647,-0.18,-0.716,1.524,0.137,-0.623,1.615],[-0.167,-0.358,1.777,-0.072,-0.353,1.478,0.014,-0.421,1.692,0.157,-0.651,1.559,-0.02,-0.41,1.442,-0.215,-0.566,1.643,-0.148,-0.729,1.55,0.116,-0.645,1.585],[-0.152,-0.384,1.811,-0.128,-0.407,1.463,0.002,-0.374,1.679,0.143,-0.602,1.557,-0.002,-0.348,1.464,-0.219,-0.583,1.619,-0.121,-0.723,1.568,0.146,-0.696,1.559],[-0.178,-0.357,1.797,-0.151,-0.547,1.424,-0.033,-0.317,1.64,0.113,-0.534,1.504,-0.008,-0.358,1.488,-0.193,-0.581,1.583,-0.124,-0.694,1.54,0.22,-0.785,1.57],[-0.206,-0.307,1.779,-0.079,-0.643,1.396,-0.071,-0.261,1.59,0.092,-0.473,1.441,-0.029,-0.35,1.516,-0.141,-0.594,1.559,-0.154,-0.663,1.508,0.272,-0.848,1.62],[-0.238,-0.279,1.771,0.048,-0.632,1.417,-0.124,-0.242,1.591,0.095,-0.455,1.409,-0.049,-0.348,1.577,-0.096,-0.616,1.553,-0.202,-0.631,1.489,0.302,-0.845,1.697],[-0.287,-0.282,1.775,0.16,-0.515,1.451,-0.155,-0.29,1.625,0.11,-0.483,1.412,-0.06,-0.355,1.656,-0.075,-0.594,1.547,-0.246,-0.602,1.474,0.316,-0.748,1.721],[-0.362,-0.337,1.8,0.203,-0.315,1.485,-0.147,-0.436,1.669,0.134,-0.575,1.449,-0.062,-0.398,1.691,-0.077,-0.528,1.54,-0.237,-0.593,1.476,0.295,-0.616,1.671],[-0.395,-0.386,1.807,0.15,-0.235,1.489,-0.104,-0.601,1.711,0.193,-0.665,1.508,-0.056,-0.493,1.646,-0.089,-0.467,1.529,-0.211,-0.645,1.493,0.264,-0.551,1.598],[-0.36,-0.431,1.805,0.062,-0.19,1.493,-0.045,-0.645,1.714,0.237,-0.745,1.584,-0.016,-0.517,1.564,-0.106,-0.427,1.528,-0.176,-0.709,1.526,0.229,-0.501,1.509],[-0.312,-0.432,1.792,0.002,-0.159,1.519,0.017,-0.616,1.721,0.256,-0.745,1.644,0.032,-0.458,1.509,-0.118,-0.453,1.514,-0.152,-0.74,1.575,0.175,-0.486,1.454],[-0.304,-0.369,1.79,-0.028,-0.164,1.58,0.063,-0.575,1.73,0.223,-0.68,1.672,0.056,-0.392,1.502,-0.112,-0.531,1.482,-0.157,-0.725,1.613,0.117,-0.506,1.429],[-0.365,-0.345,1.835,-0.054,-0.242,1.608,0.05,-0.552,1.722,0.166,-0.589,1.671,0.046,-0.354,1.555,-0.109,-0.573,1.448,-0.154,-0.69,1.626,0.103,-0.581,1.407],[-0.424,-0.304,1.843,-0.064,-0.383,1.58,-0.016,-0.54,1.709,0.105,-0.473,1.608,0.017,-0.369,1.606,-0.106,-0.618,1.446,-0.179,-0.646,1.597,0.126,-0.674,1.426],[-0.444,-0.302,1.834,0.022,-0.478,1.554,-0.061,-0.507,1.665,0.06,-0.407,1.556,-0.023,-0.352,1.637,-0.056,-0.634,1.435,-0.217,-0.62,1.551,0.169,-0.747,1.471],[-0.46,-0.302,1.816,0.145,-0.447,1.539,-0.095,-0.483,1.622,0.056,-0.394,1.525,-0.062,-0.356,1.684,0.015,-0.618,1.416,-0.265,-0.562,1.511,0.2,-0.755,1.515],[-0.469,-0.32,1.827,0.242,-0.297,1.543,-0.091,-0.498,1.639,0.09,-0.429,1.51,-0.096,-0.435,1.711,0.107,-0.557,1.411,-0.307,-0.531,1.498,0.185,-0.733,1.505],[-0.453,-0.335,1.811,0.263,-0.227,1.546,-0.072,-0.593,1.662,0.123,-0.508,1.541,-0.096,-0.576,1.657,0.109,-0.435,1.475,-0.314,-0.57,1.481,0.17,-0.72,1.476],[-0.387,-0.352,1.774,0.233,-0.167,1.52,-0.027,-0.682,1.683,0.166,-0.604,1.598,-0.058,-0.635,1.566,0.076,-0.398,1.524,-0.29,-0.649,1.484,0.146,-0.68,1.433],[-0.283,-0.365,1.745,0.168,-0.114,1.491,0.062,-0.725,1.683,0.194,-0.639,1.649,-0.014,-0.648,1.463,0.037,-0.349,1.549,-0.246,-0.721,1.513,0.083,-0.638,1.418],[-0.182,-0.359,1.719,0.103,-0.082,1.516,0.161,-0.72,1.709,0.213,-0.613,1.673,0.035,-0.664,1.371,0.004,-0.309,1.57,-0.221,-0.767,1.537,0.006,-0.627,1.447],[-0.03,-0.339,1.684,0.038,-0.104,1.578,0.221,-0.642,1.732,0.256,-0.615,1.713,0.085,-0.595,1.31,-0.017,-0.31,1.572,-0.185,-0.803,1.582,-0.03,-0.634,1.563],[0.091,-0.309,1.661,-0.048,-0.183,1.649,0.225,-0.526,1.756,0.295,-0.599,1.748,0.115,-0.484,1.323,-0.073,-0.356,1.639,-0.135,-0.815,1.617,-0.017,-0.635,1.645],[0.163,-0.28,1.623,-0.113,-0.291,1.729,0.21,-0.422,1.773,0.289,-0.546,1.779,0.142,-0.394,1.36,-0.155,-0.389,1.699,-0.09,-0.814,1.632,-0.025,-0.676,1.685],[0.224,-0.267,1.602,-0.164,-0.408,1.758,0.173,-0.327,1.79,0.227,-0.49,1.774,0.129,-0.355,1.397,-0.206,-0.437,1.728,-0.068,-0.781,1.645,-0.026,-0.785,1.717],[0.231,-0.257,1.6,-0.13,-0.6,1.634,0.092,-0.205,1.789,0.168,-0.526,1.725,0.103,-0.328,1.427,-0.212,-0.513,1.699,-0.064,-0.731,1.657,0.004,-0.913,1.753],[0.217,-0.225,1.559,-0.031,-0.744,1.552,-0.011,-0.163,1.751,0.117,-0.511,1.635,0.099,-0.28,1.447,-0.209,-0.545,1.7,-0.125,-0.701,1.62,0.093,-0.999,1.819],[0.13,-0.136,1.561,0.077,-0.784,1.51,-0.049,-0.219,1.732,0.084,-0.468,1.516,0.088,-0.238,1.498,-0.156,-0.522,1.645,-0.177,-0.636,1.574,0.169,-0.991,1.876],[0.042,-0.111,1.608,0.171,-0.655,1.489,-0.029,-0.365,1.734,0.067,-0.491,1.474,0.061,-0.233,1.549,-0.118,-0.482,1.57,-0.211,-0.624,1.537,0.204,-0.877,1.862],[-0.045,-0.128,1.672,0.231,-0.391,1.492,0.007,-0.523,1.727,0.106,-0.587,1.514,0.026,-0.356,1.51,-0.136,-0.459,1.56,-0.202,-0.64,1.527,0.211,-0.71,1.79],[-0.105,-0.231,1.765,0.188,-0.165,1.505,0.07,-0.64,1.718,0.172,-0.695,1.562,0.035,-0.483,1.416,-0.143,-0.4,1.541,-0.151,-0.679,1.564,0.197,-0.599,1.697],[-0.115,-0.298,1.804,0.083,-0.142,1.528,0.12,-0.66,1.734,0.248,-0.786,1.625,0.089,-0.48,1.336,-0.138,-0.387,1.542,-0.117,-0.754,1.6,0.192,-0.539,1.598],[-0.096,-0.398,1.757,-0.058,-0.159,1.555,0.1,-0.605,1.745,0.312,-0.781,1.664,0.144,-0.362,1.302,-0.129,-0.441,1.532,-0.09,-0.785,1.639,0.154,-0.532,1.52],[-0.099,-0.435,1.74,-0.117,-0.246,1.581,0.038,-0.571,1.745,0.312,-0.688,1.66,0.156,-0.236,1.333,-0.133,-0.515,1.51,-0.075,-0.782,1.65,0.103,-0.592,1.502],[-0.162,-0.326,1.754,-0.1,-0.463,1.575,-0.069,-0.534,1.709,0.217,-0.508,1.593,0.077,-0.211,1.431,-0.163,-0.567,1.49,-0.073,-0.688,1.659,0.141,-0.736,1.532],[-0.23,-0.213,1.731,0.04,-0.61,1.54,-0.11,-0.494,1.647,0.088,-0.38,1.511,0.018,-0.196,1.547,-0.116,-0.658,1.454,-0.152,-0.628,1.609,0.193,-0.808,1.557],[-0.297,-0.162,1.74,0.189,-0.58,1.543,-0.129,-0.497,1.615,0.017,-0.385,1.497,0.023,-0.212,1.668,-0.012,-0.624,1.397,-0.237,-0.545,1.562,0.232,-0.803,1.568],[-0.402,-0.175,1.771,0.327,-0.4,1.547,-0.111,-0.608,1.644,0.009,-0.459,1.473,0.003,-0.391,1.697,0.079,-0.528,1.372,-0.285,-0.49,1.535,0.209,-0.763,1.521],[-0.452,-0.233,1.817,0.386,-0.193,1.561,-0.039,-0.762,1.653,0.054,-0.584,1.505,-0.014,-0.568,1.58,0.11,-0.41,1.418,-0.295,-0.518,1.55,0.191,-0.7,1.461],[-0.395,-0.283,1.822,0.364,-0.118,1.535,0.03,-0.82,1.679,0.144,-0.69,1.575,0.002,-0.609,1.446,0.109,-0.33,1.497,-0.274,-0.604,1.558,0.179,-0.655,1.407],[-0.297,-0.336,1.78,0.314,-0.061,1.518,0.072,-0.801,1.698,0.222,-0.718,1.636,0.034,-0.549,1.361,0.072,-0.307,1.548,-0.238,-0.68,1.559,0.158,-0.636,1.43],[-0.176,-0.321,1.721,0.247,-0.053,1.536,0.13,-0.778,1.709,0.26,-0.698,1.681,0.074,-0.498,1.3,0.042,-0.276,1.553,-0.208,-0.738,1.58,0.117,-0.645,1.5],[-0.089,-0.279,1.711,0.174,-0.075,1.575,0.196,-0.75,1.732,0.291,-0.651,1.704,0.1,-0.471,1.284,0.029,-0.275,1.561,-0.186,-0.764,1.596,0.06,-0.643,1.606],[0.009,-0.261,1.679,0.11,-0.111,1.615,0.232,-0.685,1.752,0.307,-0.626,1.721,0.133,-0.443,1.289,-0.012,-0.282,1.554,-0.163,-0.776,1.617,0.017,-0.619,1.71],[0.111,-0.252,1.631,0.052,-0.176,1.628,0.224,-0.607,1.777,0.296,-0.609,1.739,0.165,-0.43,1.343,-0.091,-0.325,1.65,-0.119,-0.786,1.633,0.002,-0.612,1.714],[0.197,-0.224,1.588,-0.036,-0.277,1.731,0.223,-0.508,1.778,0.283,-0.574,1.762,0.168,-0.412,1.345,-0.163,-0.369,1.703,-0.089,-0.789,1.643,-0.01,-0.663,1.733],[0.234,-0.245,1.61,-0.112,-0.372,1.75,0.196,-0.388,1.812,0.248,-0.55,1.764,0.151,-0.348,1.371,-0.196,-0.416,1.736,-0.063,-0.773,1.646,-0.04,-0.743,1.751],[0.222,-0.217,1.626,-0.107,-0.528,1.639,0.156,-0.273,1.82,0.198,-0.553,1.739,0.138,-0.315,1.396,-0.187,-0.467,1.736,-0.064,-0.742,1.661,-0.02,-0.848,1.761],[0.18,-0.147,1.622,-0.029,-0.655,1.571,0.079,-0.198,1.786,0.171,-0.539,1.681,0.113,-0.299,1.398,-0.183,-0.481,1.69,-0.087,-0.702,1.667,0.069,-0.957,1.81],[0.124,-0.095,1.636,0.057,-0.66,1.536,0.035,-0.23,1.768,0.145,-0.514,1.597,0.082,-0.271,1.43,-0.145,-0.516,1.625,-0.149,-0.656,1.62,0.135,-0.962,1.839],[0.045,-0.071,1.687,0.136,-0.571,1.516,0.038,-0.347,1.752,0.118,-0.523,1.522,0.059,-0.244,1.472,-0.1,-0.495,1.565,-0.197,-0.649,1.567,0.166,-0.891,1.836],[-0.039,-0.1,1.753,0.178,-0.42,1.494,0.054,-0.463,1.735,0.115,-0.585,1.517,0.044,-0.328,1.455,-0.132,-0.478,1.576,-0.19,-0.667,1.542,0.171,-0.765,1.758],[-0.103,-0.183,1.829,0.13,-0.224,1.491,0.099,-0.557,1.728,0.137,-0.694,1.555,0.058,-0.438,1.378,-0.164,-0.443,1.582,-0.158,-0.715,1.535,0.149,-0.621,1.661],[-0.138,-0.289,1.861,0.068,-0.196,1.493,0.121,-0.569,1.748,0.169,-0.766,1.574,0.085,-0.451,1.31,-0.14,-0.438,1.565,-0.13,-0.762,1.565,0.137,-0.577,1.582],[-0.12,-0.401,1.806,-0.008,-0.195,1.515,0.06,-0.548,1.742,0.215,-0.763,1.599,0.109,-0.363,1.29,-0.142,-0.477,1.566,-0.102,-0.769,1.616,0.13,-0.564,1.517],[-0.093,-0.43,1.749,-0.124,-0.313,1.53,0.001,-0.483,1.719,0.264,-0.643,1.601,0.106,-0.27,1.354,-0.153,-0.566,1.587,-0.102,-0.77,1.61,0.136,-0.647,1.527],[-0.132,-0.354,1.72,-0.12,-0.521,1.514,-0.077,-0.444,1.683,0.224,-0.491,1.542,0.079,-0.258,1.429,-0.138,-0.571,1.539,-0.122,-0.746,1.567,0.191,-0.787,1.558],[-0.182,-0.295,1.706,-0.01,-0.655,1.498,-0.132,-0.427,1.635,0.157,-0.386,1.508,0.057,-0.184,1.527,-0.1,-0.581,1.494,-0.155,-0.695,1.532,0.239,-0.858,1.611],[-0.253,-0.228,1.692,0.175,-0.606,1.525,-0.137,-0.456,1.626,0.108,-0.375,1.469,0.03,-0.154,1.652,-0.045,-0.577,1.452,-0.215,-0.652,1.49,0.278,-0.83,1.666],[-0.333,-0.203,1.706,0.329,-0.408,1.533,-0.103,-0.558,1.676,0.084,-0.441,1.454,-0.005,-0.29,1.728,0.007,-0.548,1.425,-0.284,-0.625,1.457,0.257,-0.716,1.648],[-0.391,-0.234,1.755,0.363,-0.198,1.565,-0.027,-0.741,1.687,0.091,-0.586,1.531,-0.011,-0.518,1.685,0.048,-0.46,1.438,-0.307,-0.622,1.504,0.205,-0.613,1.548],[-0.373,-0.208,1.814,0.323,-0.138,1.564,0.067,-0.894,1.686,0.128,-0.71,1.626,0.033,-0.667,1.56,0.058,-0.34,1.506,-0.259,-0.691,1.551,0.166,-0.531,1.449],[-0.319,-0.239,1.833,0.274,-0.074,1.557,0.142,-0.925,1.697,0.18,-0.756,1.692,0.09,-0.649,1.403,0.042,-0.286,1.555,-0.194,-0.736,1.589,0.118,-0.521,1.438],[-0.261,-0.298,1.826,0.247,-0.052,1.586,0.171,-0.854,1.72,0.234,-0.741,1.735,0.119,-0.502,1.277,0.034,-0.324,1.541,-0.152,-0.755,1.626,0.076,-0.561,1.483],[-0.193,-0.333,1.779,0.197,-0.075,1.654,0.167,-0.714,1.752,0.276,-0.674,1.729,0.13,-0.336,1.247,0.039,-0.392,1.508,-0.127,-0.732,1.64,0.048,-0.629,1.537],[-0.137,-0.32,1.737,0.127,-0.118,1.72,0.158,-0.607,1.779,0.286,-0.617,1.715,0.129,-0.298,1.306,0.031,-0.402,1.489,-0.137,-0.715,1.629,0.028,-0.702,1.563],[-0.142,-0.305,1.753,0.069,-0.158,1.661,0.185,-0.577,1.792,0.256,-0.557,1.689,0.104,-0.386,1.394,0.005,-0.344,1.506,-0.149,-0.708,1.62,-0.01,-0.755,1.559],[-0.145,-0.288,1.763,0.032,-0.202,1.628,0.185,-0.54,1.797,0.201,-0.519,1.65,0.1,-0.433,1.395,-0.024,-0.364,1.53,-0.163,-0.707,1.601,-0.042,-0.78,1.543],[-0.099,-0.279,1.767,0.026,-0.255,1.628,0.191,-0.454,1.794,0.182,-0.527,1.649,0.103,-0.44,1.371,-0.034,-0.396,1.538,-0.175,-0.698,1.606,-0.063,-0.821,1.554],[-0.077,-0.28,1.765,0.017,-0.284,1.626,0.173,-0.395,1.788,0.167,-0.526,1.666,0.098,-0.44,1.367,-0.034,-0.413,1.541,-0.188,-0.679,1.606,-0.068,-0.844,1.563],[-0.096,-0.286,1.771,0.022,-0.303,1.626,0.155,-0.369,1.786,0.14,-0.48,1.654,0.101,-0.432,1.372,-0.037,-0.417,1.548,-0.206,-0.669,1.588,-0.065,-0.858,1.556],[-0.119,-0.294,1.784,0.035,-0.316,1.622,0.148,-0.362,1.781,0.123,-0.454,1.635,0.102,-0.425,1.382,-0.043,-0.431,1.552,-0.223,-0.658,1.572,-0.061,-0.876,1.546],[-0.141,-0.307,1.799,0.046,-0.313,1.616,0.136,-0.361,1.776,0.112,-0.454,1.618,0.096,-0.423,1.395,-0.044,-0.439,1.557,-0.237,-0.647,1.559,-0.054,-0.884,1.532],[-0.165,-0.323,1.81,0.053,-0.3,1.614,0.124,-0.362,1.771,0.106,-0.464,1.605,0.077,-0.424,1.408,-0.041,-0.44,1.562,-0.246,-0.637,1.548,-0.042,-0.878,1.518],[-0.186,-0.341,1.814,0.056,-0.282,1.615,0.116,-0.366,1.764,0.108,-0.476,1.597,0.056,-0.427,1.414,-0.036,-0.438,1.567,-0.255,-0.632,1.539,-0.025,-0.862,1.511],[-0.166,-0.346,1.802,0.057,-0.271,1.614,0.12,-0.367,1.749,0.141,-0.509,1.612,0.042,-0.426,1.398,-0.023,-0.442,1.565,-0.26,-0.633,1.549,-0.023,-0.857,1.526],[-0.162,-0.344,1.788,0.044,-0.255,1.607,0.097,-0.374,1.745,0.147,-0.518,1.619,0.037,-0.426,1.402,-0.015,-0.432,1.562,-0.252,-0.636,1.539,-0.022,-0.843,1.528],[-0.2,-0.351,1.791,0.033,-0.22,1.605,0.09,-0.424,1.751,0.133,-0.497,1.617,0.03,-0.445,1.421,-0.011,-0.415,1.57,-0.246,-0.647,1.524,-0.02,-0.817,1.504],[-0.217,-0.355,1.797,0.032,-0.203,1.604,0.109,-0.454,1.752,0.149,-0.507,1.624,0.029,-0.47,1.412,-0.021,-0.414,1.582,-0.245,-0.66,1.528,-0.03,-0.806,1.489],[-0.166,-0.365,1.788,0.028,-0.216,1.611,0.132,-0.437,1.747,0.192,-0.54,1.65,0.043,-0.459,1.377,-0.028,-0.42,1.578,-0.241,-0.674,1.555,-0.053,-0.803,1.513],[-0.127,-0.366,1.773,0.005,-0.238,1.616,0.133,-0.413,1.752,0.183,-0.528,1.656,0.057,-0.435,1.378,-0.026,-0.419,1.565,-0.225,-0.682,1.561,-0.06,-0.803,1.532],[-0.146,-0.354,1.769,-0.016,-0.279,1.61,0.12,-0.374,1.773,0.149,-0.48,1.627,0.062,-0.419,1.394,-0.025,-0.413,1.566,-0.214,-0.682,1.548,-0.051,-0.828,1.53],[-0.169,-0.348,1.779,-0.004,-0.325,1.599,0.1,-0.326,1.772,0.124,-0.453,1.598,0.059,-0.411,1.413,-0.032,-0.428,1.577,-0.22,-0.656,1.542,-0.04,-0.876,1.527],[-0.198,-0.354,1.798,0.02,-0.321,1.591,0.064,-0.33,1.757,0.101,-0.454,1.587,0.037,-0.416,1.445,-0.035,-0.444,1.588,-0.24,-0.613,1.535,-0.024,-0.902,1.509],[-0.236,-0.361,1.813,0.044,-0.291,1.593,0.045,-0.363,1.746,0.087,-0.459,1.571,0.009,-0.433,1.47,-0.026,-0.452,1.596,-0.265,-0.584,1.52,-0.003,-0.898,1.481],[-0.276,-0.373,1.823,0.056,-0.246,1.594,0.04,-0.396,1.738,0.085,-0.479,1.558,-0.011,-0.467,1.479,-0.013,-0.45,1.602,-0.288,-0.575,1.501,0.014,-0.867,1.45],[-0.27,-0.381,1.818,0.06,-0.215,1.589,0.049,-0.418,1.723,0.133,-0.535,1.587,-0.014,-0.487,1.446,-0.006,-0.441,1.599,-0.297,-0.593,1.506,0.01,-0.828,1.444],[-0.242,-0.383,1.801,0.048,-0.19,1.584,0.059,-0.447,1.717,0.181,-0.575,1.63,-0.005,-0.49,1.411,-0.004,-0.425,1.59,-0.281,-0.63,1.516,-0.005,-0.779,1.446],[-0.202,-0.384,1.779,0.024,-0.168,1.594,0.09,-0.486,1.721,0.214,-0.57,1.661,0.016,-0.481,1.386,-0.008,-0.405,1.579,-0.252,-0.674,1.535,-0.03,-0.75,1.467],[-0.138,-0.382,1.752,-0.003,-0.187,1.613,0.138,-0.488,1.739,0.23,-0.544,1.671,0.049,-0.463,1.366,-0.018,-0.394,1.564,-0.227,-0.712,1.559,-0.062,-0.756,1.512],[-0.111,-0.377,1.738,-0.032,-0.237,1.615,0.149,-0.455,1.763,0.189,-0.5,1.656,0.072,-0.445,1.387,-0.024,-0.392,1.557,-0.204,-0.722,1.562,-0.071,-0.781,1.534],[-0.121,-0.356,1.738,-0.042,-0.311,1.604,0.129,-0.385,1.769,0.145,-0.472,1.634,0.077,-0.411,1.401,-0.036,-0.406,1.566,-0.183,-0.707,1.567,-0.051,-0.842,1.53],[-0.137,-0.316,1.719,-0.007,-0.392,1.582,0.077,-0.345,1.738,0.095,-0.455,1.615,0.07,-0.383,1.403,-0.051,-0.447,1.584,-0.178,-0.652,1.58,-0.015,-0.933,1.517],[-0.141,-0.275,1.679,0.058,-0.419,1.569,0.04,-0.358,1.716,0.057,-0.476,1.6,0.073,-0.395,1.437,-0.064,-0.471,1.594,-0.199,-0.618,1.558,0.029,-0.94,1.503],[-0.18,-0.285,1.677,0.116,-0.361,1.59,0.032,-0.387,1.714,0.044,-0.468,1.557,0.048,-0.423,1.471,-0.065,-0.46,1.576,-0.257,-0.564,1.521,0.039,-0.897,1.475],[-0.181,-0.304,1.676,0.129,-0.319,1.613,0.06,-0.446,1.711,0.084,-0.486,1.541,0.02,-0.469,1.455,-0.039,-0.443,1.564,-0.304,-0.553,1.516,0.049,-0.867,1.463],[-0.145,-0.303,1.671,0.116,-0.327,1.603,0.084,-0.493,1.695,0.154,-0.55,1.577,0.019,-0.496,1.419,-0.02,-0.425,1.565,-0.311,-0.587,1.529,0.047,-0.831,1.463],[-0.118,-0.299,1.675,0.1,-0.316,1.577,0.105,-0.522,1.691,0.191,-0.57,1.606,0.038,-0.505,1.39,-0.018,-0.386,1.56,-0.286,-0.634,1.54,0.031,-0.791,1.464],[-0.093,-0.286,1.669,0.083,-0.308,1.563,0.133,-0.547,1.7,0.208,-0.56,1.62,0.061,-0.505,1.365,-0.032,-0.356,1.56,-0.255,-0.67,1.552,0.007,-0.78,1.485],[-0.054,-0.273,1.667,0.061,-0.317,1.571,0.156,-0.551,1.719,0.21,-0.551,1.641,0.09,-0.489,1.353,-0.05,-0.349,1.57,-0.232,-0.69,1.566,-0.01,-0.782,1.532],[-0.004,-0.261,1.671,0.024,-0.321,1.602,0.17,-0.524,1.741,0.21,-0.546,1.669,0.12,-0.459,1.368,-0.078,-0.357,1.577,-0.213,-0.714,1.576,-0.01,-0.739,1.611],[0.033,-0.247,1.684,-0.019,-0.335,1.65,0.16,-0.478,1.765,0.205,-0.538,1.669,0.116,-0.453,1.407,-0.1,-0.393,1.588,-0.189,-0.715,1.588,-0.009,-0.733,1.616],[0.085,-0.233,1.652,-0.065,-0.382,1.691,0.136,-0.405,1.764,0.179,-0.556,1.65,0.112,-0.407,1.42,-0.143,-0.459,1.643,-0.192,-0.699,1.594,0.018,-0.755,1.646],[0.104,-0.208,1.625,-0.064,-0.461,1.664,0.082,-0.32,1.739,0.164,-0.57,1.623,0.118,-0.385,1.423,-0.171,-0.478,1.665,-0.21,-0.689,1.584,0.073,-0.768,1.688],[0.049,-0.171,1.672,-0.032,-0.567,1.599,0.043,-0.249,1.743,0.144,-0.559,1.572,0.115,-0.385,1.435,-0.176,-0.484,1.645,-0.221,-0.665,1.558,0.085,-0.829,1.734],[-0.013,-0.159,1.701,0.028,-0.61,1.569,-0.024,-0.258,1.734,0.114,-0.533,1.502,0.079,-0.38,1.489,-0.166,-0.499,1.648,-0.235,-0.645,1.519,0.111,-0.879,1.791],[-0.06,-0.159,1.676,0.118,-0.542,1.534,-0.055,-0.28,1.726,0.112,-0.526,1.451,0.027,-0.365,1.513,-0.131,-0.52,1.65,-0.261,-0.626,1.491,0.163,-0.866,1.802],[-0.107,-0.174,1.675,0.141,-0.406,1.513,-0.028,-0.375,1.716,0.114,-0.569,1.455,-0.0,-0.397,1.538,-0.129,-0.508,1.641,-0.274,-0.619,1.475,0.193,-0.766,1.78],[-0.161,-0.222,1.749,0.1,-0.316,1.496,0.057,-0.517,1.716,0.124,-0.657,1.488,-0.002,-0.463,1.514,-0.159,-0.47,1.628,-0.254,-0.676,1.474,0.182,-0.681,1.724],[-0.196,-0.262,1.775,0.04,-0.287,1.477,0.105,-0.583,1.72,0.163,-0.723,1.532,0.007,-0.545,1.453,-0.18,-0.451,1.625,-0.218,-0.732,1.495,0.165,-0.622,1.637],[-0.162,-0.333,1.775,-0.04,-0.258,1.478,0.125,-0.54,1.719,0.188,-0.76,1.585,0.023,-0.519,1.381,-0.206,-0.468,1.637,-0.172,-0.766,1.539,0.132,-0.589,1.564],[-0.105,-0.402,1.756,-0.108,-0.263,1.485,0.07,-0.499,1.699,0.219,-0.724,1.621,0.054,-0.438,1.328,-0.219,-0.509,1.644,-0.128,-0.791,1.579,0.094,-0.587,1.532],[-0.094,-0.413,1.776,-0.194,-0.392,1.493,0.02,-0.436,1.691,0.251,-0.586,1.633,0.08,-0.306,1.348,-0.225,-0.569,1.631,-0.096,-0.773,1.61,0.11,-0.7,1.538],[-0.113,-0.321,1.743,-0.164,-0.653,1.475,-0.074,-0.385,1.652,0.202,-0.406,1.577,0.042,-0.26,1.421,-0.17,-0.6,1.595,-0.116,-0.758,1.568,0.19,-0.901,1.602],[-0.151,-0.244,1.682,0.026,-0.781,1.461,-0.134,-0.374,1.614,0.126,-0.299,1.5,0.017,-0.18,1.552,-0.085,-0.616,1.54,-0.154,-0.695,1.532,0.252,-0.956,1.689],[-0.213,-0.184,1.664,0.245,-0.668,1.48,-0.135,-0.421,1.643,0.098,-0.326,1.453,0.004,-0.169,1.691,-0.011,-0.577,1.467,-0.208,-0.647,1.496,0.298,-0.871,1.749],[-0.312,-0.173,1.69,0.378,-0.387,1.54,-0.077,-0.578,1.688,0.072,-0.453,1.461,-0.002,-0.312,1.724,0.029,-0.487,1.436,-0.281,-0.62,1.477,0.278,-0.725,1.702],[-0.362,-0.215,1.757,0.393,-0.178,1.565,-0.019,-0.766,1.704,0.1,-0.602,1.529,0.001,-0.536,1.66,0.037,-0.399,1.474,-0.294,-0.618,1.517,0.214,-0.613,1.588],[-0.343,-0.196,1.812,0.349,-0.117,1.569,0.074,-0.928,1.704,0.15,-0.734,1.642,0.046,-0.653,1.536,0.024,-0.335,1.525,-0.228,-0.683,1.576,0.153,-0.515,1.472],[-0.297,-0.226,1.834,0.283,-0.056,1.568,0.154,-0.946,1.722,0.196,-0.769,1.71,0.105,-0.62,1.379,0.027,-0.313,1.553,-0.182,-0.741,1.593,0.094,-0.5,1.474],[-0.238,-0.293,1.822,0.234,-0.045,1.607,0.176,-0.847,1.744,0.249,-0.736,1.741,0.145,-0.472,1.264,0.043,-0.346,1.529,-0.144,-0.755,1.622,0.049,-0.534,1.531],[-0.172,-0.333,1.771,0.178,-0.077,1.687,0.156,-0.694,1.775,0.287,-0.67,1.727,0.156,-0.313,1.249,0.055,-0.405,1.489,-0.113,-0.721,1.635,0.025,-0.613,1.58],[-0.102,-0.33,1.723,0.121,-0.126,1.77,0.131,-0.594,1.794,0.287,-0.615,1.705,0.168,-0.252,1.293,0.048,-0.404,1.472,-0.111,-0.697,1.628,0.012,-0.684,1.593],[-0.1,-0.309,1.748,0.089,-0.194,1.685,0.148,-0.56,1.798,0.268,-0.56,1.681,0.146,-0.334,1.39,0.017,-0.311,1.493,-0.11,-0.675,1.631,-0.011,-0.761,1.594],[-0.075,-0.261,1.729,0.085,-0.271,1.618,0.147,-0.55,1.781,0.246,-0.532,1.662,0.128,-0.369,1.404,-0.015,-0.334,1.512,-0.12,-0.653,1.641,-0.031,-0.806,1.598],[-0.026,-0.247,1.703,0.101,-0.315,1.619,0.141,-0.502,1.781,0.216,-0.514,1.645,0.129,-0.368,1.38,-0.02,-0.362,1.513,-0.147,-0.642,1.632,-0.034,-0.833,1.613],[0.02,-0.243,1.643,0.118,-0.338,1.621,0.127,-0.461,1.775,0.205,-0.511,1.644,0.14,-0.376,1.375,-0.005,-0.356,1.512,-0.165,-0.631,1.622,-0.024,-0.846,1.63],[0.045,-0.255,1.604,0.138,-0.345,1.624,0.124,-0.465,1.756,0.206,-0.5,1.643,0.149,-0.382,1.378,0.001,-0.331,1.512,-0.176,-0.629,1.615,-0.016,-0.857,1.635],[0.014,-0.263,1.616,0.129,-0.364,1.658,0.1,-0.505,1.743,0.179,-0.499,1.631,0.132,-0.403,1.39,-0.015,-0.339,1.524,-0.185,-0.614,1.59,-0.003,-0.868,1.608],[-0.02,-0.256,1.637,0.084,-0.363,1.678,0.084,-0.55,1.741,0.145,-0.488,1.589,0.115,-0.426,1.411,-0.033,-0.355,1.542,-0.201,-0.587,1.571,0.004,-0.853,1.567],[-0.026,-0.255,1.646,0.073,-0.362,1.679,0.094,-0.541,1.735,0.162,-0.508,1.58,0.111,-0.421,1.406,-0.05,-0.356,1.55,-0.213,-0.579,1.578,0.012,-0.827,1.585],[-0.03,-0.244,1.661,0.061,-0.353,1.678,0.094,-0.512,1.731,0.172,-0.529,1.599,0.098,-0.416,1.419,-0.076,-0.345,1.558,-0.215,-0.592,1.576,0.039,-0.749,1.651],[-0.022,-0.252,1.669,0.055,-0.352,1.678,0.093,-0.5,1.74,0.177,-0.539,1.624,0.115,-0.424,1.427,-0.089,-0.364,1.573,-0.207,-0.617,1.569,0.021,-0.73,1.649],[-0.007,-0.25,1.684,0.031,-0.35,1.678,0.087,-0.483,1.751,0.189,-0.535,1.637,0.118,-0.447,1.45,-0.091,-0.38,1.589,-0.184,-0.649,1.571,0.015,-0.716,1.643],[-0.01,-0.249,1.695,-0.002,-0.356,1.684,0.085,-0.449,1.758,0.187,-0.515,1.626,0.106,-0.443,1.469,-0.112,-0.384,1.601,-0.168,-0.657,1.573,0.022,-0.699,1.651],[0.012,-0.25,1.658,-0.027,-0.394,1.695,0.057,-0.389,1.754,0.188,-0.524,1.595,0.111,-0.414,1.465,-0.147,-0.426,1.651,-0.185,-0.665,1.578,0.05,-0.722,1.668],[0.049,-0.255,1.615,-0.004,-0.455,1.634,0.0,-0.308,1.721,0.177,-0.552,1.58,0.125,-0.384,1.452,-0.166,-0.44,1.642,-0.202,-0.649,1.567,0.107,-0.753,1.712],[0.051,-0.224,1.594,0.059,-0.504,1.596,-0.042,-0.304,1.697,0.155,-0.549,1.54,0.131,-0.368,1.452,-0.163,-0.467,1.608,-0.223,-0.615,1.534,0.148,-0.768,1.753],[0.033,-0.2,1.598,0.103,-0.482,1.574,-0.063,-0.353,1.699,0.143,-0.549,1.492,0.111,-0.378,1.488,-0.132,-0.459,1.605,-0.25,-0.588,1.5,0.173,-0.767,1.803],[-0.034,-0.201,1.649,0.107,-0.463,1.551,-0.061,-0.388,1.717,0.133,-0.557,1.444,0.079,-0.412,1.538,-0.135,-0.445,1.623,-0.256,-0.575,1.475,0.173,-0.751,1.82],[-0.075,-0.228,1.673,0.092,-0.443,1.512,-0.053,-0.407,1.707,0.114,-0.585,1.424,0.051,-0.417,1.538,-0.173,-0.46,1.645,-0.239,-0.575,1.464,0.196,-0.718,1.812],[-0.122,-0.266,1.72,0.071,-0.404,1.481,-0.085,-0.424,1.701,0.13,-0.604,1.425,0.037,-0.428,1.548,-0.172,-0.474,1.657,-0.251,-0.573,1.46,0.203,-0.695,1.771],[-0.176,-0.279,1.736,0.038,-0.379,1.464,-0.074,-0.437,1.687,0.128,-0.614,1.427,0.034,-0.455,1.568,-0.164,-0.481,1.654,-0.266,-0.572,1.459,0.222,-0.67,1.725],[-0.21,-0.292,1.755,0.005,-0.356,1.453,-0.053,-0.441,1.67,0.143,-0.626,1.437,-0.001,-0.496,1.567,-0.152,-0.493,1.653,-0.275,-0.582,1.454,0.241,-0.648,1.687],[-0.234,-0.298,1.764,-0.014,-0.336,1.442,-0.049,-0.432,1.64,0.175,-0.646,1.455,-0.021,-0.537,1.54,-0.149,-0.502,1.654,-0.272,-0.604,1.445,0.246,-0.638,1.665],[-0.248,-0.315,1.766,-0.024,-0.328,1.431,-0.041,-0.432,1.63,0.188,-0.657,1.473,-0.029,-0.548,1.506,-0.151,-0.501,1.654,-0.263,-0.637,1.441,0.228,-0.623,1.651],[-0.247,-0.369,1.744,-0.038,-0.32,1.421,-0.029,-0.448,1.648,0.194,-0.675,1.492,-0.007,-0.517,1.473,-0.153,-0.488,1.645,-0.231,-0.688,1.452,0.201,-0.596,1.624],[-0.188,-0.428,1.708,-0.047,-0.311,1.415,-0.028,-0.447,1.648,0.198,-0.678,1.496,0.021,-0.484,1.44,-0.159,-0.477,1.633,-0.193,-0.73,1.48,0.176,-0.593,1.61],[-0.125,-0.438,1.666,-0.052,-0.32,1.42,-0.03,-0.44,1.643,0.198,-0.666,1.489,0.04,-0.457,1.428,-0.163,-0.479,1.628,-0.17,-0.73,1.505,0.171,-0.629,1.614],[-0.086,-0.413,1.648,-0.075,-0.366,1.432,-0.024,-0.42,1.636,0.2,-0.628,1.472,0.049,-0.418,1.439,-0.166,-0.486,1.622,-0.164,-0.708,1.522,0.193,-0.696,1.638],[-0.07,-0.379,1.642,-0.097,-0.445,1.433,-0.032,-0.372,1.624,0.197,-0.584,1.45,0.046,-0.378,1.466,-0.184,-0.493,1.607,-0.168,-0.671,1.524,0.233,-0.768,1.677],[-0.079,-0.328,1.629,-0.06,-0.515,1.418,-0.065,-0.331,1.617,0.175,-0.546,1.421,0.036,-0.382,1.482,-0.194,-0.507,1.602,-0.187,-0.631,1.514,0.265,-0.813,1.709],[-0.093,-0.311,1.635,0.009,-0.529,1.411,-0.1,-0.32,1.619,0.155,-0.535,1.408,0.029,-0.384,1.501,-0.2,-0.506,1.596,-0.19,-0.623,1.489,0.272,-0.798,1.723],[-0.119,-0.308,1.646,0.086,-0.511,1.415,-0.115,-0.345,1.63,0.147,-0.543,1.389,0.024,-0.374,1.525,-0.169,-0.511,1.582,-0.207,-0.61,1.47,0.286,-0.769,1.742],[-0.153,-0.317,1.666,0.13,-0.459,1.422,-0.12,-0.386,1.644,0.145,-0.56,1.364,0.016,-0.371,1.557,-0.135,-0.51,1.571,-0.233,-0.602,1.459,0.302,-0.722,1.748],[-0.191,-0.352,1.687,0.131,-0.379,1.431,-0.115,-0.434,1.657,0.144,-0.587,1.358,0.006,-0.402,1.573,-0.124,-0.484,1.572,-0.243,-0.581,1.458,0.291,-0.691,1.727],[-0.221,-0.398,1.705,0.094,-0.299,1.443,-0.105,-0.48,1.661,0.167,-0.63,1.382,-0.008,-0.459,1.561,-0.114,-0.452,1.574,-0.245,-0.583,1.467,0.282,-0.643,1.7],[-0.247,-0.439,1.726,0.034,-0.25,1.453,-0.108,-0.509,1.66,0.258,-0.654,1.447,-0.007,-0.496,1.527,-0.11,-0.43,1.579,-0.234,-0.617,1.475,0.268,-0.595,1.664],[-0.259,-0.457,1.746,-0.014,-0.257,1.458,-0.111,-0.512,1.65,0.322,-0.645,1.497,0.002,-0.483,1.491,-0.126,-0.43,1.588,-0.21,-0.659,1.489,0.244,-0.567,1.629],[-0.27,-0.462,1.766,-0.063,-0.307,1.448,-0.138,-0.495,1.646,0.33,-0.587,1.497,0.007,-0.401,1.524,-0.129,-0.481,1.605,-0.186,-0.668,1.512,0.242,-0.599,1.603],[-0.287,-0.431,1.765,-0.081,-0.452,1.426,-0.185,-0.467,1.637,0.296,-0.482,1.442,0.003,-0.372,1.565,-0.122,-0.531,1.607,-0.187,-0.641,1.513,0.278,-0.701,1.62],[-0.32,-0.384,1.76,-0.015,-0.598,1.395,-0.232,-0.423,1.591,0.224,-0.372,1.363,-0.018,-0.369,1.607,-0.085,-0.547,1.596,-0.213,-0.619,1.462,0.333,-0.792,1.668],[-0.365,-0.337,1.758,0.1,-0.624,1.39,-0.271,-0.396,1.559,0.192,-0.339,1.326,-0.044,-0.338,1.669,-0.032,-0.555,1.577,-0.261,-0.575,1.411,0.378,-0.796,1.722],[-0.42,-0.351,1.769,0.216,-0.462,1.404,-0.275,-0.459,1.615,0.162,-0.398,1.35,-0.05,-0.35,1.766,0.021,-0.505,1.545,-0.301,-0.544,1.404,0.362,-0.697,1.692],[-0.464,-0.386,1.778,0.233,-0.295,1.428,-0.224,-0.587,1.67,0.167,-0.516,1.398,-0.055,-0.473,1.793,0.015,-0.429,1.53,-0.294,-0.552,1.444,0.336,-0.593,1.629],[-0.443,-0.345,1.775,0.193,-0.21,1.406,-0.123,-0.704,1.68,0.193,-0.653,1.47,-0.029,-0.61,1.701,0.007,-0.379,1.526,-0.276,-0.615,1.492,0.312,-0.511,1.535],[-0.349,-0.39,1.757,0.148,-0.092,1.435,-0.037,-0.743,1.683,0.266,-0.759,1.583,0.032,-0.596,1.55,0.008,-0.353,1.525,-0.223,-0.709,1.548,0.273,-0.454,1.443],[-0.233,-0.42,1.698,0.136,-0.004,1.475,0.029,-0.727,1.705,0.341,-0.761,1.665,0.093,-0.538,1.423,0.031,-0.378,1.495,-0.182,-0.767,1.578,0.201,-0.452,1.438],[-0.162,-0.363,1.674,0.101,-0.011,1.527,0.102,-0.747,1.746,0.37,-0.695,1.704,0.158,-0.477,1.349,0.054,-0.403,1.453,-0.147,-0.798,1.601,0.138,-0.487,1.483],[-0.101,-0.307,1.679,0.015,-0.096,1.616,0.152,-0.68,1.768,0.372,-0.594,1.703,0.219,-0.386,1.327,0.037,-0.402,1.466,-0.121,-0.785,1.615,0.093,-0.554,1.546],[-0.127,-0.307,1.741,-0.023,-0.216,1.621,0.171,-0.547,1.792,0.352,-0.495,1.69,0.238,-0.303,1.344,-0.004,-0.422,1.468,-0.101,-0.739,1.62,0.059,-0.637,1.581],[-0.137,-0.3,1.797,-0.004,-0.352,1.585,0.11,-0.393,1.823,0.289,-0.457,1.67,0.218,-0.21,1.394,-0.012,-0.498,1.474,-0.094,-0.629,1.638,0.055,-0.721,1.57],[-0.157,-0.286,1.763,0.049,-0.465,1.577,0.033,-0.325,1.822,0.202,-0.416,1.632,0.179,-0.21,1.453,-0.005,-0.586,1.494,-0.149,-0.496,1.627,0.081,-0.805,1.57],[-0.201,-0.283,1.72,0.145,-0.505,1.59,-0.022,-0.299,1.823,0.157,-0.361,1.555,0.136,-0.239,1.529,0.011,-0.598,1.503,-0.204,-0.416,1.588,0.088,-0.81,1.589],[-0.242,-0.289,1.737,0.231,-0.451,1.604,-0.058,-0.337,1.826,0.152,-0.341,1.492,0.11,-0.274,1.601,0.08,-0.523,1.498,-0.257,-0.391,1.552,0.072,-0.793,1.575],[-0.309,-0.346,1.79,0.27,-0.346,1.613,-0.091,-0.418,1.833,0.163,-0.354,1.452,0.056,-0.33,1.644,0.125,-0.445,1.504,-0.273,-0.391,1.537,0.068,-0.764,1.537],[-0.365,-0.383,1.815,0.243,-0.298,1.617,-0.089,-0.497,1.823,0.186,-0.415,1.437,0.014,-0.418,1.644,0.139,-0.387,1.534,-0.255,-0.414,1.541,0.085,-0.735,1.499],[-0.367,-0.388,1.834,0.179,-0.272,1.587,-0.016,-0.558,1.815,0.209,-0.492,1.508,0.042,-0.525,1.621,0.146,-0.326,1.577,-0.284,-0.5,1.501,0.054,-0.652,1.445],[-0.357,-0.411,1.84,0.126,-0.228,1.545,0.058,-0.6,1.822,0.218,-0.511,1.558,0.07,-0.584,1.563,0.129,-0.262,1.598,-0.234,-0.592,1.5,0.009,-0.584,1.422],[-0.306,-0.443,1.824,0.089,-0.189,1.547,0.125,-0.614,1.835,0.235,-0.518,1.606,0.096,-0.567,1.491,0.103,-0.246,1.624,-0.167,-0.654,1.53,-0.044,-0.57,1.433],[-0.239,-0.459,1.804,0.051,-0.183,1.586,0.165,-0.567,1.857,0.252,-0.51,1.647,0.122,-0.496,1.444,0.085,-0.255,1.651,-0.12,-0.677,1.562,-0.079,-0.581,1.503],[-0.19,-0.448,1.795,-0.005,-0.212,1.648,0.177,-0.481,1.88,0.259,-0.476,1.664,0.139,-0.404,1.431,0.057,-0.278,1.655,-0.092,-0.666,1.584,-0.092,-0.568,1.599],[-0.207,-0.439,1.826,-0.057,-0.285,1.669,0.16,-0.368,1.904,0.236,-0.484,1.648,0.096,-0.388,1.512,0.017,-0.31,1.659,-0.069,-0.617,1.59,-0.094,-0.606,1.628],[-0.205,-0.466,1.81,-0.106,-0.433,1.618,0.053,-0.182,1.919,0.205,-0.489,1.588,0.072,-0.411,1.588,-0.01,-0.414,1.7,-0.093,-0.597,1.588,-0.064,-0.688,1.594],[-0.237,-0.437,1.804,-0.083,-0.59,1.598,-0.077,-0.031,1.882,0.193,-0.454,1.502,0.072,-0.395,1.63,-0.001,-0.46,1.721,-0.134,-0.529,1.553,0.02,-0.785,1.624],[-0.275,-0.391,1.794,0.033,-0.67,1.583,-0.189,-0.001,1.824,0.184,-0.404,1.412,0.047,-0.346,1.649,0.031,-0.482,1.714,-0.178,-0.458,1.508,0.114,-0.82,1.715],[-0.313,-0.367,1.799,0.17,-0.595,1.576,-0.225,-0.12,1.81,0.175,-0.382,1.358,0.003,-0.324,1.689,0.08,-0.482,1.676,-0.228,-0.42,1.465,0.152,-0.741,1.764],[-0.347,-0.387,1.835,0.213,-0.368,1.578,-0.186,-0.339,1.837,0.189,-0.422,1.4,-0.055,-0.433,1.74,0.143,-0.412,1.659,-0.255,-0.45,1.454,0.145,-0.599,1.762],[-0.367,-0.409,1.85,0.173,-0.26,1.57,-0.09,-0.588,1.851,0.215,-0.493,1.486,-0.061,-0.611,1.733,0.139,-0.283,1.684,-0.208,-0.551,1.466,0.136,-0.556,1.712],[-0.305,-0.456,1.837,0.086,-0.184,1.539,0.041,-0.712,1.84,0.264,-0.531,1.585,-0.027,-0.685,1.65,0.073,-0.241,1.708,-0.118,-0.695,1.518,0.088,-0.498,1.619],[-0.194,-0.479,1.811,0.022,-0.144,1.549,0.158,-0.7,1.854,0.296,-0.502,1.664,0.011,-0.666,1.543,-0.001,-0.227,1.742,-0.046,-0.796,1.564,0.015,-0.489,1.597],[-0.099,-0.459,1.802,-0.059,-0.178,1.603,0.222,-0.6,1.887,0.293,-0.46,1.72,0.046,-0.568,1.475,-0.051,-0.25,1.787,0.025,-0.821,1.608,-0.048,-0.515,1.633],[-0.073,-0.46,1.84,-0.149,-0.315,1.658,0.203,-0.407,1.922,0.274,-0.392,1.748,0.071,-0.414,1.495,-0.091,-0.313,1.842,0.09,-0.767,1.666,-0.088,-0.606,1.649],[-0.116,-0.458,1.88,-0.191,-0.565,1.659,0.1,-0.242,1.949,0.229,-0.273,1.716,0.054,-0.303,1.546,-0.099,-0.405,1.836,0.081,-0.73,1.658,-0.077,-0.737,1.676],[-0.112,-0.435,1.848,-0.137,-0.805,1.607,-0.052,-0.217,1.935,0.135,-0.178,1.629,0.013,-0.22,1.597,-0.06,-0.513,1.829,0.065,-0.671,1.587,-0.009,-0.86,1.724],[-0.119,-0.386,1.821,0.017,-0.917,1.554,-0.148,-0.178,1.87,0.096,-0.126,1.532,-0.014,-0.133,1.71,0.019,-0.528,1.809,0.018,-0.551,1.54,0.082,-0.921,1.812],[-0.139,-0.32,1.791,0.229,-0.816,1.564,-0.176,-0.233,1.842,0.099,-0.141,1.497,-0.028,-0.161,1.798,0.1,-0.492,1.725,-0.07,-0.461,1.53,0.128,-0.846,1.879],[-0.176,-0.32,1.836,0.357,-0.562,1.623,-0.167,-0.429,1.834,0.099,-0.231,1.508,-0.045,-0.323,1.832,0.143,-0.395,1.667,-0.16,-0.457,1.52,0.137,-0.673,1.885],[-0.216,-0.379,1.893,0.362,-0.353,1.663,-0.111,-0.659,1.838,0.091,-0.35,1.531,-0.042,-0.548,1.807,0.138,-0.295,1.684,-0.177,-0.488,1.542,0.103,-0.605,1.802],[-0.212,-0.369,1.89,0.324,-0.273,1.663,0.0,-0.801,1.838,0.133,-0.492,1.606,-0.005,-0.672,1.712,0.108,-0.22,1.743,-0.121,-0.585,1.585,0.095,-0.526,1.685],[-0.136,-0.371,1.87,0.292,-0.208,1.675,0.147,-0.846,1.829,0.143,-0.565,1.711,0.046,-0.674,1.592,0.082,-0.202,1.76,-0.043,-0.665,1.652,0.055,-0.479,1.633],[-0.046,-0.349,1.854,0.246,-0.194,1.726,0.251,-0.816,1.843,0.144,-0.57,1.77,0.095,-0.602,1.498,0.074,-0.243,1.737,0.019,-0.703,1.715,-0.005,-0.493,1.651],[0.022,-0.316,1.855,0.175,-0.231,1.802,0.3,-0.735,1.875,0.148,-0.553,1.791,0.136,-0.507,1.448,0.077,-0.296,1.709,0.06,-0.706,1.752,-0.052,-0.53,1.657],[0.07,-0.293,1.882,0.119,-0.32,1.9,0.307,-0.651,1.917,0.137,-0.525,1.796,0.151,-0.42,1.446,0.06,-0.323,1.712,0.117,-0.663,1.791,-0.091,-0.555,1.668],[0.078,-0.278,1.945,0.061,-0.383,1.969,0.297,-0.572,1.96,0.112,-0.489,1.788,0.149,-0.344,1.481,0.033,-0.345,1.724,0.163,-0.61,1.814,-0.124,-0.536,1.71],[0.049,-0.267,2.041,0.009,-0.445,1.945,0.269,-0.51,1.998,0.071,-0.459,1.762,0.13,-0.295,1.542,-0.003,-0.377,1.745,0.191,-0.548,1.825,-0.138,-0.503,1.712],[-0.013,-0.307,2.128,-0.035,-0.533,1.912,0.199,-0.432,2.016,-0.0,-0.473,1.727,0.111,-0.287,1.611,-0.034,-0.454,1.796,0.17,-0.492,1.836,-0.133,-0.546,1.689],[-0.136,-0.334,2.11,-0.05,-0.671,1.891,0.093,-0.387,1.971,-0.052,-0.411,1.626,0.089,-0.275,1.66,-0.05,-0.507,1.833,0.118,-0.471,1.807,-0.061,-0.584,1.658],[-0.225,-0.382,2.079,0.013,-0.768,1.855,-0.002,-0.326,1.914,-0.098,-0.339,1.532,0.029,-0.216,1.682,-0.01,-0.566,1.836,0.05,-0.386,1.719,0.011,-0.624,1.691],[-0.27,-0.433,2.053,0.113,-0.728,1.828,-0.068,-0.318,1.886,-0.113,-0.323,1.512,-0.037,-0.191,1.747,0.077,-0.589,1.799,-0.025,-0.315,1.654,0.041,-0.592,1.737],[-0.293,-0.477,2.027,0.193,-0.576,1.827,-0.102,-0.384,1.908,-0.095,-0.355,1.527,-0.086,-0.276,1.826,0.149,-0.544,1.758,-0.092,-0.302,1.633,0.045,-0.484,1.754]],"contact":[0,0,41,41,105,217,92,84,213,130,130,162,34,61,92,88,24,65,129,130,34,162,161,145,25,92,92,24,0,160,162,162,34,162,40,28,92,72,8,40,44,44,38,36,36,36,116,84,69,5,133,162,166,130,36,29,84,85,69,161,130,130,130,130,88,56,72,56,8,226,162,162,170,106,122,122,120,121,88,88,44,61,9,169,162,162,46,37,45,92,85,89,73,129,162,130,2,3,21,85,84,84,129,130,162,162,0,0,34,34,0,104,76,25,65,33,161,130,4,53,20,5,65,129,130,130,0,2,1,32,32,34,40,8,88,73,9,33,161,142,164,116,85,69,65,129,194,130,130,130,130,145,161,129,161,145,145,145,129,129,129,145,129,129,161,161,161,129,145,129,129,129,163,161,161,161,161,145,144,24,137,162,162,162,163,162,130,162,106,120,24,28,76,40,163,162,162,36,53,68,69,65,129,130,130,2,2,2,131,145,161,176,144,129,162,163,35,19,130,2,130,106,72,72,24,43,109,163,175,171,163,166,170,46,44,45,41,105,105,73,105,169,165,167,167,37,85,85,5,129,162,130,128,2,130,34,33,41,44,8,129,129,162,162,34,34,2,2,24,88,88,89,65,73,162,130,34,34,33,68,76,0,0,73,130,130,2,2,130,2,1,1,93,92,76,4,68]},"curriculum":{"step_heights":[0.02,0.055,0.085,0.12],"population":[0.1891,0.3507,0.2343,0.2259]},"results":[{"tile":"descend","step_height":0.02,"outcome":"climbed","seconds":8.36},{"tile":"descend","step_height":0.055,"outcome":"timeout","seconds":20.0},{"tile":"descend","step_height":0.085,"outcome":"climbed","seconds":6.8},{"tile":"descend","step_height":0.12,"outcome":"climbed","seconds":11.84},{"tile":"ascend","step_height":0.02,"outcome":"timeout","seconds":20.0},{"tile":"ascend","step_height":0.055,"outcome":"timeout","seconds":20.0},{"tile":"ascend","step_height":0.085,"outcome":"timeout","seconds":20.0},{"tile":"ascend","step_height":0.12,"outcome":"timeout","seconds":20.0}]};
+const C = { deep: "#081a31", chalk: "#eaf2f8", mist: "#9db7cf", sodium: "#ffcf3a", line: "#2b507d" };
+const $ = (id) => document.getElementById(id);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const cm = (m) => String(Number((m * 100).toFixed(1)));
+
+function fit(canvas) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), r = canvas.getBoundingClientRect();
+  const w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+  if (canvas.width !== w * dpr || canvas.height !== h * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return [ctx, w, h];
+}
+const lerp = (a, b, t) => a + (b - a) * t;
+const mix = (c1, c2, t) => { const p = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)); const a = p(c1), b = p(c2); return `rgb(${a.map((v, i) => Math.round(lerp(v, b[i], t))).join(",")})`; };
+
+/* ---- kinematics, mirroring spider_stairs/robot.py ---- */
+function qrot(q, v) {
+  const [w, x, y, z] = q, [vx, vy, vz] = v;
+  const tx = 2 * (y * vz - z * vy), ty = 2 * (z * vx - x * vz), tz = 2 * (x * vy - y * vx);
+  return [vx + w * tx + (y * tz - z * ty), vy + w * ty + (z * tx - x * tz), vz + w * tz + (x * ty - y * tx)];
+}
+function legPoints(R, pos, quat, q) {
+  const [a, b] = R.mount_ellipse, cl = R.coxa[0], fl = R.femur[0], tl = R.tibia[0], out = [];
+  for (let s = 0; s < 2; s++) for (let i = 0; i < 4; i++) {
+    const sign = s === 0 ? 1 : -1, ang = sign * R.mount_angles_deg[i] * Math.PI / 180, j = (s * 4 + i) * 3;
+    const yaw = ang - sign * q[j], dx = Math.cos(yaw), dy = Math.sin(yaw), f = q[j + 1], t = f + q[j + 2];
+    const p0 = [a * Math.cos(ang), b * Math.sin(ang), 0];
+    const p1 = [p0[0] + cl * dx, p0[1] + cl * dy, 0];
+    const p2 = [p1[0] + fl * Math.cos(f) * dx, p1[1] + fl * Math.cos(f) * dy, -fl * Math.sin(f)];
+    const p3 = [p2[0] + tl * Math.cos(t) * dx, p2[1] + tl * Math.cos(t) * dy, p2[2] - tl * Math.sin(t)];
+    out.push([p0, p1, p2, p3].map((p) => { const w = qrot(quat, p); return [w[0] + pos[0], w[1] + pos[1], w[2] + pos[2]]; }));
+  }
+  return out;
+}
+function ellipsoidHull(ctx, P, center, radii, quat, pos) {
+  const pts = [];
+  for (let i = 0; i <= 9; i++) for (let k = 0; k < 18; k++) {
+    const th = Math.PI * i / 9, ph = Math.PI * k / 9;
+    const l = [center[0] + radii[0] * Math.sin(th) * Math.cos(ph), center[1] + radii[1] * Math.sin(th) * Math.sin(ph), center[2] + radii[2] * Math.cos(th)];
+    const w = qrot(quat, l); pts.push(P([w[0] + pos[0], w[1] + pos[1], w[2] + pos[2]]));
+  }
+  pts.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const p of pts) { while (lo.length > 1 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (const p of pts.reverse()) { while (up.length > 1 && cross(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  const hl = lo.slice(0, -1).concat(up.slice(0, -1));
+  ctx.beginPath(); hl.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath();
+  ctx.fillStyle = "#0a2242"; ctx.fill(); ctx.strokeStyle = C.chalk; ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.strokeStyle = "rgba(234,242,248,.4)"; ctx.lineWidth = 1;
+  for (const plane of [0, 1]) { ctx.beginPath(); for (let i = 0; i <= 32; i++) { const a = i / 32 * 2 * Math.PI;
+    const l = plane === 0 ? [radii[0] * Math.cos(a), 0, radii[2] * Math.sin(a)] : [0, radii[1] * Math.cos(a), radii[2] * Math.sin(a)];
+    const w = qrot(quat, [l[0] + center[0], l[1] + center[1], l[2] + center[2]]), p = P([w[0] + pos[0], w[1] + pos[1], w[2] + pos[2]]);
+    i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); } ctx.stroke(); }
+}
+
+/* ---- hero: the recorded descent, drawn on its staircase ---- */
+const roll = D.rollout, T = D.terrain, R = D.robot;
+const H = { t: 0, hold: 0 };
+const START = 0.44;  // fraction of the replay to open on: partway down, where the steps read
+function frameAt(t) {
+  const n = roll.pos.length, x = Math.max(0, Math.min(n - 1, t / roll.frame_dt));
+  const i = Math.max(0, Math.min(n - 2, Math.floor(x))), u = n > 1 ? x - i : 0, j = Math.min(n - 1, i + 1);
+  const L = (A) => A[i].map((v, k) => lerp(v, A[j][k], u));
+  let qa = roll.quat[i], qb = roll.quat[j];
+  if (qa[0] * qb[0] + qa[1] * qb[1] + qa[2] * qb[2] + qa[3] * qb[3] < 0) qb = qb.map((v) => -v);
+  let quat = qa.map((v, k) => lerp(v, qb[k], u)); const nn = Math.hypot(...quat);
+  return { pos: L(roll.pos), quat: quat.map((v) => v / nn), q: L(roll.q), contact: roll.contact[u < 0.5 ? i : j], idx: u < 0.5 ? i : j };
+}
+const duration = () => (roll.pos.length - 1) * roll.frame_dt;
+function stairZ(cheb) {
+  const h = T.step_height, k = Math.max(0, Math.min(T.n_steps, Math.ceil((cheb - T.platform_half) / T.step_depth - 1e-6)));
+  return (T.n_steps - k) * h;  // pyramid: summit at the centre
+}
+function drawHero() {
+  const [ctx, W, Ht] = fit($("hero-canvas"));
+  ctx.clearRect(0, 0, W, Ht);
+  const fr = frameAt(H.t), narrow = W < 760;
+  const tgt = [fr.pos[0], fr.pos[1], fr.pos[2]];
+  const yaw = -1.06, pitch = narrow ? 0.30 : 0.22, dist = narrow ? 2.5 : 2.1;
+  const cp = Math.cos(pitch), eye = [tgt[0] + dist * cp * Math.cos(yaw), tgt[1] + dist * cp * Math.sin(yaw), tgt[2] + dist * Math.sin(pitch)];
+  const f = [tgt[0] - eye[0], tgt[1] - eye[1], tgt[2] - eye[2]].map((v) => v / dist);
+  let r = [f[1], -f[0], 0]; const rl = Math.hypot(r[0], r[1]); r = [r[0] / rl, r[1] / rl, 0];
+  const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+  const F = Math.min(W, Ht * 1.6) * 0.95, cy = Ht * (narrow ? 0.72 : 0.70), cx = W * (narrow ? 0.5 : 0.62);
+  const P = (p) => { const d = [p[0] - eye[0], p[1] - eye[1], p[2] - eye[2]];
+    const z = Math.max(0.05, d[0] * f[0] + d[1] * f[1] + d[2] * f[2]);
+    return [cx + F * (d[0] * r[0] + d[1] * r[1]) / z, cy - F * (d[0] * u[0] + d[1] * u[1] + d[2] * u[2]) / z, z]; };
+
+  const half = T.tile_size / 2, n = T.n_steps, quads = [], zs = [];
+  for (let k = 0; k <= n; k++) zs.push(stairZ(k === 0 ? 0 : T.platform_half + (k - 0.5) * T.step_depth));
+  const zLo = Math.min(...zs), zHi = Math.max(...zs), shade = (z) => (zHi > zLo ? (z - zLo) / (zHi - zLo) : 0.5);
+  for (let k = 0; k <= n; k++) {
+    const ri = k === 0 ? 0 : T.platform_half + (k - 1) * T.step_depth, ro = k === n ? half : T.platform_half + k * T.step_depth, z = zs[k];
+    if (k === 0) quads.push({ pts: [[-ro, -ro, z], [ro, -ro, z], [ro, ro, z], [-ro, ro, z]], top: true, z });
+    else for (const [ax, sg] of [[0, 1], [0, -1], [1, 1], [1, -1]]) {
+      const m = (a, b) => (ax === 0 ? [sg * a, b, z] : [b, sg * a, z]);
+      quads.push({ pts: [m(ri, -ri), m(ro, -ro), m(ro, ro), m(ri, ri)], top: true, z });
+    }
+    if (k < n) {
+      const za = zs[k], zb = zs[k + 1], up = zb > za;
+      for (const [ax, sg] of [[0, 1], [0, -1], [1, 1], [1, -1]]) {
+        const m = (b, z) => (ax === 0 ? [sg * ro, b, z] : [b, sg * ro, z]);
+        const nrm = ax === 0 ? [up ? -sg : sg, 0, 0] : [0, up ? -sg : sg, 0], c = ax === 0 ? [sg * ro, 0, 0] : [0, sg * ro, 0];
+        if (nrm[0] * (eye[0] - c[0]) + nrm[1] * (eye[1] - c[1]) <= 0) continue;
+        quads.push({ pts: [m(-ro, za), m(ro, za), m(ro, zb), m(-ro, zb)], top: false, z: (za + zb) / 2 });
+      }
+    }
+  }
+  for (const q of quads) { q.s = q.pts.map(P); q.depth = q.s.reduce((a, p) => a + p[2], 0) / 4; }
+  quads.sort((a, b) => b.depth - a.depth);
+  ctx.lineJoin = "round";
+  for (const q of quads) {
+    ctx.beginPath(); q.s.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath();
+    ctx.fillStyle = q.top ? mix("#0a2140", "#1c467a", shade(q.z)) : mix("#06162b", "#12325a", shade(q.z));
+    ctx.fill(); ctx.strokeStyle = "rgba(234,242,248,.3)"; ctx.lineWidth = 1; ctx.stroke();
+  }
+  // footprints from the last four seconds
+  const win = Math.round(4 / roll.frame_dt);
+  for (let i = Math.max(1, fr.idx - win); i <= fr.idx; i++) for (let l = 0; l < 8; l++) {
+    if (((roll.contact[i] >> l) & 1) && !((roll.contact[i - 1] >> l) & 1)) {
+      const foot = legPoints(R, roll.pos[i], roll.quat[i], roll.q[i])[l][3], p = P(foot), age = (fr.idx - i) / win;
+      ctx.beginPath(); ctx.ellipse(p[0], p[1], Math.max(1.5, F * 0.018 / p[2]), Math.max(1, F * 0.018 / p[2] * Math.sin(pitch)), 0, 0, 7);
+      ctx.strokeStyle = `rgba(255,207,58,${0.7 * (1 - age)})`; ctx.lineWidth = 1.2; ctx.stroke();
+    }
+  }
+  // the spider
+  const legs = legPoints(R, fr.pos, fr.quat, fr.q).map((pts, l) => ({ s: pts.map(P), l })), bodyZ = P(fr.pos)[2];
+  const drawLeg = (leg) => {
+    const s = leg.s, px = (m, z) => Math.max(1.2, F * m / z), down = (fr.contact >> leg.l) & 1;
+    ctx.lineCap = "round"; ctx.strokeStyle = C.chalk;
+    [[0, 1, R.coxa[1]], [1, 2, R.femur[1]], [2, 3, R.tibia[1]]].forEach(([a, b, rad]) => {
+      ctx.beginPath(); ctx.moveTo(s[a][0], s[a][1]); ctx.lineTo(s[b][0], s[b][1]); ctx.lineWidth = px(rad * 2, (s[a][2] + s[b][2]) / 2); ctx.stroke(); });
+    for (const k of [1, 2]) { ctx.beginPath(); ctx.arc(s[k][0], s[k][1], px(0.017, s[k][2]), 0, 7); ctx.fillStyle = C.deep; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = C.chalk; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(s[3][0], s[3][1], px(R.foot_radius * 1.3, s[3][2]), 0, 7);
+    ctx.fillStyle = down ? C.sodium : C.deep; ctx.fill(); ctx.strokeStyle = down ? C.sodium : C.chalk; ctx.lineWidth = 1.3; ctx.stroke();
+  };
+  const mid = (leg) => (leg.s[0][2] + leg.s[2][2]) / 2;
+  legs.filter((l) => mid(l) >= bodyZ).sort((a, b) => mid(b) - mid(a)).forEach(drawLeg);
+  const abX = -(R.body_radii[0] + R.abdomen_half_len * 0.6), parts = [
+    { c: [abX, 0, 0.03], r: [R.abdomen_half_len + R.abdomen_radius, R.abdomen_radius, R.abdomen_radius] },
+    { c: [0, 0, 0], r: R.body_radii }];
+  parts.forEach((p) => { const w = qrot(fr.quat, p.c); p.d = P([w[0] + fr.pos[0], w[1] + fr.pos[1], w[2] + fr.pos[2]])[2]; });
+  parts.sort((a, b) => b.d - a.d).forEach((p) => ellipsoidHull(ctx, P, p.c, p.r, fr.quat, fr.pos));
+  legs.filter((l) => mid(l) < bodyZ).sort((a, b) => mid(b) - mid(a)).forEach(drawLeg);
+}
+
+/* ---- anatomy, top view ---- */
+function drawAnatomy() {
+  const [ctx, W, Ht] = fit($("anatomy")); ctx.clearRect(0, 0, W, Ht);
+  const dp = R.default_pose, q = []; for (let i = 0; i < 8; i++) q.push(dp.coxa, dp.femur, dp.tibia);
+  const legs = legPoints(R, [0, 0, 0], [1, 0, 0, 0], q), sc = Math.min(W / 0.88, Ht / 0.80);
+  const X = (p) => W / 2 + p[0] * sc, Y = (p) => Ht / 2 - p[1] * sc;
+  ctx.lineCap = "round"; ctx.font = "500 11px 'IBM Plex Mono', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  legs.forEach((l, i) => {
+    ctx.strokeStyle = C.chalk; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(l[0]), Y(l[0])); ctx.lineTo(X(l[2]), Y(l[2])); ctx.stroke();
+    ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(X(l[2]), Y(l[2])); ctx.lineTo(X(l[3]), Y(l[3])); ctx.stroke();
+    ctx.beginPath(); ctx.arc(X(l[3]), Y(l[3]), 5.5, 0, 7); ctx.fillStyle = C.deep; ctx.fill(); ctx.strokeStyle = C.chalk; ctx.lineWidth = 1.4; ctx.stroke();
+    const out = Math.hypot(l[3][0], l[3][1]), k = (out + 0.052) / out;
+    ctx.fillStyle = C.mist; ctx.fillText(R.legs[i], W / 2 + l[3][0] * k * sc, Ht / 2 - l[3][1] * k * sc);
+  });
+  const abX = -(R.body_radii[0] + R.abdomen_half_len * 0.6);
+  for (const [cx, rx, ry] of [[abX, R.abdomen_half_len + R.abdomen_radius, R.abdomen_radius], [0, R.body_radii[0], R.body_radii[1]]]) {
+    ctx.beginPath(); ctx.ellipse(W / 2 + cx * sc, Ht / 2, rx * sc, ry * sc, 0, 0, 7);
+    ctx.fillStyle = "#0a2242"; ctx.fill(); ctx.strokeStyle = C.chalk; ctx.lineWidth = 1.5; ctx.stroke(); }
+}
+
+/* ---- curriculum ladder ---- */
+function drawLadder() {
+  const [ctx, W, Ht] = fit($("ladder")); ctx.clearRect(0, 0, W, Ht);
+  const hs = D.curriculum.step_heights, pop = D.curriculum.population, n = hs.length;
+  const padL = 48, padR = 10, padB = 26, treadW = (W - padL - padR) / n, base = Ht - padB;
+  const total = hs.reduce((a, b) => a + b, 0), s = (Ht * 0.34) / Math.max(total, 0.2);
+  const maxPop = Math.max(0.01, ...pop), barMax = Ht * 0.42, tops = [];
+  ctx.beginPath(); ctx.moveTo(padL, base); let y = base;
+  for (let l = 0; l < n; l++) { y -= hs[l] * s; ctx.lineTo(padL + l * treadW, y); ctx.lineTo(padL + (l + 1) * treadW, y); tops.push(y); }
+  ctx.lineTo(W - padR, base); ctx.closePath();
+  ctx.fillStyle = "rgba(21,53,91,.7)"; ctx.fill(); ctx.strokeStyle = C.chalk; ctx.lineWidth = 1.2; ctx.stroke();
+  const sh = D.robot.stand_height * s;
+  ctx.strokeStyle = C.sodium; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(20, base); ctx.lineTo(20, base - sh); ctx.moveTo(15, base); ctx.lineTo(25, base); ctx.moveTo(15, base - sh); ctx.lineTo(25, base - sh); ctx.stroke();
+  ctx.save(); ctx.translate(11, base - sh / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = C.sodium; ctx.font = "400 10px 'IBM Plex Mono', monospace"; ctx.textAlign = "center"; ctx.fillText("spider", 0, 0); ctx.restore();
+  ctx.textAlign = "center";
+  for (let l = 0; l < n; l++) {
+    const cx = padL + (l + 0.5) * treadW, bh = barMax * pop[l] / maxPop, bw = Math.min(38, treadW * 0.5);
+    ctx.fillStyle = C.chalk; ctx.fillRect(cx - bw / 2, tops[l] - bh, bw, bh);
+    ctx.font = "500 11.5px 'IBM Plex Mono', monospace"; ctx.fillText(Math.round(pop[l] * 100) + "%", cx, tops[l] - bh - 7);
+    ctx.fillStyle = C.mist; ctx.font = "400 11px 'IBM Plex Mono', monospace"; ctx.fillText(cm(hs[l]) + " cm", cx, Ht - 8);
+  }
+}
+
+/* ---- footfall ---- */
+function drawGait() {
+  const [ctx, W, Ht] = fit($("gait")); ctx.clearRect(0, 0, W, Ht);
+  const padL = 32, padB = 20, rowH = (Ht - padB) / 8, x0 = padL, x1 = W - 4, c = roll.contact, n = c.length;
+  ctx.font = "500 10.5px 'IBM Plex Mono', monospace"; ctx.textBaseline = "middle";
+  for (let l = 0; l < 8; l++) {
+    ctx.fillStyle = C.mist; ctx.textAlign = "left"; ctx.fillText(R.legs[l], 0, l * rowH + rowH / 2);
+    ctx.fillStyle = "rgba(21,53,91,.55)"; ctx.fillRect(x0, l * rowH + 3, x1 - x0, rowH - 6);
+  }
+  ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(x0, 4 * rowH); ctx.lineTo(x1, 4 * rowH); ctx.stroke();
+  const X = (i) => x0 + (x1 - x0) * i / Math.max(1, n - 1);
+  for (let l = 0; l < 8; l++) { let start = -1;
+    for (let i = 0; i <= n; i++) { const on = i < n && ((c[i] >> l) & 1);
+      if (on && start < 0) start = i;
+      if (!on && start >= 0) { ctx.fillStyle = C.chalk; ctx.fillRect(X(start), l * rowH + 5, Math.max(1, X(i - 1) - X(start) + (x1 - x0) / n), rowH - 10); start = -1; } } }
+  const dur = duration(); ctx.fillStyle = C.mist; ctx.textBaseline = "alphabetic"; ctx.font = "400 10px 'IBM Plex Mono', monospace";
+  for (let t = 0; t <= dur + 1e-6; t += 2) { const x = x0 + (x1 - x0) * t / dur;
+    ctx.textAlign = t === 0 ? "left" : x > x1 - 14 ? "right" : "center"; ctx.fillText(t + " s", x, Ht - 4);
+    ctx.fillStyle = C.line; ctx.fillRect(x, Ht - padB, 1, 4); ctx.fillStyle = C.mist; }
+  const px = X(Math.min(n - 1, Math.round(H.t / roll.frame_dt)));
+  ctx.fillStyle = C.sodium; ctx.fillRect(px - 1, 0, 2, Ht - padB);
+}
+
+/* ---- text filled from the data ---- */
+function fillText() {
+  const legM = R.coxa[2] + R.femur[2] + R.tibia[2] + R.foot_mass, mass = R.body_mass + R.abdomen_mass + 8 * legM;
+  const dp = R.default_pose, q = []; for (let i = 0; i < 8; i++) q.push(dp.coxa, dp.femur, dp.tibia);
+  const feet = legPoints(R, [0, 0, 0], [1, 0, 0, 0], q).map((l) => l[3]);
+  const span = 2 * Math.max(...feet.map((f) => Math.abs(f[1])));
+  $("s-mass").innerHTML = mass.toFixed(1) + '<small>kg</small>';
+  $("s-height").innerHTML = cm(R.stand_height) + '<small>cm</small>';
+  $("s-span").innerHTML = cm(span) + '<small>cm</small>';
+  $("hero-cap").textContent = `${cm(T.step_height)} cm steps · ${Math.round(T.step_height / R.stand_height * 100)}% of its standing height`;
+  $("results").innerHTML = D.results.map((r) => {
+    const ok = r.outcome === "climbed";
+    return `<tr><td>${r.tile === "ascend" ? "Up" : "Down"}</td><td class="n">${cm(r.step_height)} cm</td>
+      <td><span class="tag ${ok ? "ok" : "no"}">${ok ? "Finished" : "Ran out of time"}</span></td>
+      <td class="n r">${ok ? r.seconds.toFixed(1) + " s" : "—"}</td></tr>`; }).join("");
+}
+
+let prev = performance.now();
+function tick(now) {
+  const dt = Math.min(0.1, (now - prev) / 1000); prev = now;
+  const dur = duration();
+  if (H.t >= dur) { H.hold += dt; if (H.hold > 1.8) { H.t = 0; H.hold = 0; } }
+  else H.t = Math.min(dur, H.t + dt * 0.85);
+  drawHero(); drawGait();
+  requestAnimationFrame(tick);
+}
+
+fillText(); drawAnatomy(); drawLadder();
+H.t = duration() * START;
+if (reduceMotion) { drawHero(); drawGait(); }
+else requestAnimationFrame(tick);
+new ResizeObserver(() => { drawHero(); drawAnatomy(); drawLadder(); drawGait(); }).observe(document.body);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawAnatomy(); drawLadder(); drawGait(); });
+</script>
+</body>
+</html>

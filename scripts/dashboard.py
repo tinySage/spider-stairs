@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT))
 from spider_stairs import uidata  # noqa: E402
 
 PAGE = ROOT / "ui" / "index.html"
+WRITEUP = ROOT / "ui" / "writeup.html"
 SLOT = "/*__DATA__*/null"
 
 
@@ -27,6 +28,7 @@ def main():
     p.add_argument("--ckpt", type=int, default=None)
     p.add_argument("--gpu", action="store_true")
     p.add_argument("--build", default=None, help="write a standalone HTML file instead of serving")
+    p.add_argument("--writeup", default=None, help="write the standalone write-up page to this path")
     p.add_argument("--port", type=int, default=8000)
     args = p.parse_args()
     log_dir = f"logs/{args.exp_name}"
@@ -36,6 +38,14 @@ def main():
         with open(f"{log_dir}/rollouts.json", "w") as f:
             json.dump(replay, f, separators=(",", ":"))
         print(f"recorded {len(replay['rollouts'])} replays from model_{replay['ckpt']}.pt")
+
+    if args.writeup:
+        data = json.dumps(uidata.writeup_data(log_dir, args.exp_name), separators=(",", ":"))
+        html = WRITEUP.read_text().replace(SLOT, data.replace("</", "<\\/"))
+        Path(args.writeup).write_text(html)
+        print(f"wrote {args.writeup} ({len(html) / 1e6:.1f} MB)")
+        if not args.build:
+            return
 
     if args.build:
         data = json.dumps(uidata.assemble(log_dir, args.exp_name), separators=(",", ":"))

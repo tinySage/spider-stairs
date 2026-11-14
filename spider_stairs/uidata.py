@@ -158,3 +158,45 @@ def assemble(log_dir: str, exp_name: str) -> dict:
         with open(roll_path) as f:
             data["replay"] = json.load(f)
     return data
+
+def writeup_data(log_dir: str, exp_name: str) -> dict:
+    """Trimmed data for the write-up page: one hero replay, the results table and the final curriculum."""
+    from dataclasses import asdict
+
+    from .robot import DEFAULT_POSE, SpiderSpec, leg_names, nominal_stance_height
+
+    full = assemble(log_dir, exp_name)
+    replay = full["replay"]
+    if replay is None:
+        raise SystemExit("no rollouts.json in " + log_dir + " - run with --record first")
+    heights = full["meta"]["terrain"]["step_heights"]
+
+    rolls = replay["rollouts"]
+    # hero: the hardest staircase the policy actually finished, preferring a descent (it reads best in motion)
+    done = [r for r in rolls if r["outcome"] == "climbed"]
+    hero = sorted(done or rolls, key=lambda r: (r["tile"] == "descend", r["level"]))[-1]
+
+    series = full["metrics"]["series"]
+
+    def tail(key, n=10):
+        vals = [v for v in series.get(key, []) if v is not None][-n:]
+        return sum(vals) / len(vals) if vals else 0.0
+
+    spec = SpiderSpec()
+    robot = {k: getattr(spec, k) for k in ("mount_ellipse", "coxa", "femur", "tibia", "foot_radius", "body_radii",
+                                           "abdomen_half_len", "abdomen_radius", "body_mass", "abdomen_mass",
+                                           "foot_mass", "mount_angles_deg")}
+    robot.update(legs=leg_names(), default_pose=DEFAULT_POSE, stand_height=round(nominal_stance_height(), 4))
+    t = full["meta"]["terrain"]
+    return {
+        "robot": robot,
+        "terrain": {"tile_size": t["tile_size"], "platform_half": t["platform_half"], "step_depth": t["step_depth"],
+                    "n_steps": t["n_steps"], "step_height": heights[hero["level"]]},
+        "rollout": {"frame_dt": replay["frame_dt"], "pos": hero["pos"], "quat": hero["quat"],
+                    "q": hero["q"], "contact": hero["contact"]},
+        "curriculum": {"step_heights": heights,
+                       "population": [round(tail(f"level_pop_{i}"), 4) for i in range(len(heights))]},
+        "results": [{"tile": r["tile"], "step_height": heights[r["level"]], "outcome": r["outcome"],
+                     "seconds": round((len(r["pos"]) - 1) * replay["frame_dt"], 2)}
+                    for r in sorted(rolls, key=lambda r: (r["tile"] != "descend", r["level"]))],
+    }
