@@ -8,6 +8,8 @@ An eight-legged, 24-joint spider that teaches itself to climb stairs. It trains 
 
 The banner is a real replay: a policy trained for 30 minutes on two CPU cores, walking down 12 cm steps (78% of its own standing height) with exploration noise switched off.
 
+**[Read the write-up](https://tinysage.github.io/spider-stairs/)** &middot; **[Open the dashboard](https://tinysage.github.io/spider-stairs/demo.html)**
+
 ## Status
 
 | | |
@@ -49,7 +51,7 @@ The demo is about 1% of the planned training budget. It shows that the pipeline 
 
 ![The dashboard: a 3D replay, footfall diagram, curriculum staircase, learning curves and reward ledger](docs/dashboard.png)
 
-Download [`docs/demo.html`](docs/demo.html) and open it in a browser to try it with the demo run's data.
+Open it at [tinysage.github.io/spider-stairs/demo.html](https://tinysage.github.io/spider-stairs/demo.html), or download [`docs/demo.html`](docs/demo.html) and open it locally.
 
 - **Plate.** A 3D replay drawn from recorded joint angles. Drag to orbit. Feet turn yellow on contact and leave prints; the dashed line is the path of the body.
 - **Footfall.** The gait diagram for the replay, which doubles as the timeline. An alternating pattern across the eight rows is a real gait; solid bars mean it is dragging its feet.
@@ -60,6 +62,7 @@ Download [`docs/demo.html`](docs/demo.html) and open it in a browser to try it w
 python scripts/dashboard.py                    # http://localhost:8000, curves refresh every 15 s while training
 python scripts/dashboard.py --record           # replay the latest checkpoint on every staircase, then serve
 python scripts/dashboard.py --build run.html   # one self-contained file to share
+python scripts/dashboard.py --writeup docs/index.html   # rebuild the write-up page from the latest run
 ```
 
 ## Run it
@@ -120,8 +123,10 @@ spider-stairs/
 │   ├── train.py               PPO training (rsl-rl)
 │   ├── play.py                viewer rollout or mp4 recording of a checkpoint
 │   └── dashboard.py           serves the dashboard, records replays, builds a shareable file
-├── ui/index.html              the dashboard: one file, no build step
-├── docs/                      banner, screenshot, demo page
+├── ui/
+│   ├── index.html             the dashboard: one file, no build step
+│   └── writeup.html           the write-up page
+├── docs/                      the published site: write-up, dashboard, banner
 └── tests/smoke_test.py        CPU check that the sim and env are sane
 ```
 

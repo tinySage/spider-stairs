@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teaching a Spider to Climb Stairs</title>
+<meta name="description" content="An eight-legged robot with 24 motors learns to climb stairs in simulation, and the two ways it cheated first.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Cyanotype field notebook, the same world as the project's dashboard.
+     Layout: a single narrow column of prose, with mono specimen notes in the left margin at wide widths. */
+  --prussian: #0c2340;
+  --deep: #081a31;
+  --wash: #15355b;
+  --line: #2b507d;
+  --chalk: #eaf2f8;
+  --mist: #9db7cf;
+  --sodium: #ffcf3a;
+  --lichen: #8fe3c0;
+  --ember: #ff8562;
+  --display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --measure: 34rem;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--prussian);
+  background-image: radial-gradient(130% 70% at 25% -5%, #133260 0%, var(--prussian) 52%, #07172c 100%);
+  background-attachment: fixed;
+  color: var(--chalk);
+  font: 400 17px/1.65 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font: 500 11px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--mist); }
+
+/* ---------- hero ---------- */
+.hero { position: relative; border-bottom: 1px solid var(--line); overflow: hidden; }
+.hero::after { /* keeps the title legible wherever the staircase happens to sit */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(104deg, rgba(10,28,52,.94) 0%, rgba(10,28,52,.72) 26%, rgba(10,28,52,0) 54%),
+              linear-gradient(to top, rgba(10,28,52,.9) 0%, rgba(10,28,52,0) 16%);
+}
+.hero-text, .hero-foot { z-index: 2; }
+#hero-canvas { display: block; width: 100%; height: clamp(400px, 64vh, 640px); }
+.hero-text { position: absolute; left: 0; right: 0; top: clamp(34px, 7vh, 80px); padding: 0 clamp(20px, 6vw, 80px); pointer-events: none; }
+.hero-text h1 { font: italic 400 clamp(46px, 9.5vw, 128px)/.9 var(--display); margin: 10px 0 0; letter-spacing: -.015em; text-wrap: balance; }
+.hero-text .sub { font: 400 clamp(18px, 2.4vw, 27px)/1.3 var(--display); color: var(--chalk); margin: 14px 0 0; max-width: 20ch; }
+.hero-foot { position: absolute; left: 0; right: 0; bottom: 20px; padding: 0 clamp(20px, 6vw, 80px); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 30px; }
+.hero-foot span { font: 500 11.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--sodium); }
+.hero-foot .muted { color: var(--mist); }
+
+/* ---------- shell ---------- */
+.wrap { max-width: 1140px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 48px); }
+.lede { font: 400 clamp(21px, 2.6vw, 27px)/1.45 var(--display); color: var(--chalk); max-width: 30ch; margin: 0; }
+.lede-block { display: grid; grid-template-columns: 170px minmax(0, var(--measure)); gap: 0 56px; }
+.lede-block .lede { grid-column: 2; }
+@media (max-width: 860px) { .lede-block { grid-template-columns: minmax(0, 1fr); } .lede-block .lede { grid-column: 1; } }
+.lede-block { padding: clamp(40px, 7vw, 76px) 0 clamp(28px, 4vw, 44px); border-bottom: 1px solid var(--line); }
+
+section { padding: clamp(40px, 6vw, 72px) 0; border-bottom: 1px solid var(--line); }
+.row { display: grid; grid-template-columns: 170px minmax(0, var(--measure)); gap: 0 56px; }
+.aside { grid-column: 1; }
+.flow { grid-column: 2; min-width: 0; }
+@media (max-width: 860px) { .row { grid-template-columns: minmax(0, 1fr); gap: 0; } .aside, .flow { grid-column: 1; } .aside { margin-bottom: 18px; } }
+h2 { font: 400 clamp(29px, 3.6vw, 40px)/1.08 var(--display); margin: 0 0 18px; letter-spacing: -.01em; text-wrap: balance; }
+h3 { font: 500 15px/1.4 var(--body); margin: 32px 0 8px; color: var(--chalk); }
+p { margin: 0 0 17px; }
+.flow > p:last-child { margin-bottom: 0; }
+a { color: var(--chalk); text-decoration-color: var(--line); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--sodium); }
+code { font: 400 .88em var(--mono); background: var(--wash); padding: 2px 6px; }
+.note { font: 400 12.5px/1.6 var(--mono); color: var(--mist); }
+.note b { color: var(--chalk); font-weight: 500; display: block; margin-bottom: 4px; letter-spacing: .08em; text-transform: uppercase; font-size: 11px; }
+figure { margin: 26px 0; }
+figcaption { font: 400 12.5px/1.55 var(--mono); color: var(--mist); margin-top: 10px; }
+
+/* ---------- figures ---------- */
+.plate { border: 1px solid var(--line); background: var(--deep); padding: 14px; }
+.plate canvas { display: block; width: 100%; }
+#gait { height: 150px; }
+#anatomy { height: 260px; }
+#ladder { height: 220px; }
+
+/* ---------- numbers ---------- */
+.specimen { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin: 0; }
+.specimen div { background: var(--deep); padding: 15px 16px; }
+.specimen dt { font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--mist); }
+.specimen dd { margin: 7px 0 0; font: 400 30px/1 var(--display); }
+.specimen dd small { font: 400 12px var(--mono); color: var(--mist); margin-left: 3px; }
+
+table { width: 100%; border-collapse: collapse; font: 400 14px var(--body); margin: 4px 0 0; }
+th, td { text-align: left; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: baseline; }
+th { font: 500 10.5px var(--mono); letter-spacing: .09em; text-transform: uppercase; color: var(--mist); }
+td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+td.r { text-align: right; padding-right: 0; }
+.tag { font: 500 10.5px var(--mono); letter-spacing: .08em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 7px; }
+.tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.tag.ok { color: var(--lichen); } .tag.no { color: var(--mist); }
+
+/* ---------- cheats ---------- */
+.cheat { border-left: 2px solid var(--sodium); padding: 2px 0 2px 20px; margin: 26px 0; }
+.cheat h3 { margin-top: 0; font: italic 400 24px/1.2 var(--display); }
+.cheat .fix { font: 400 14px/1.6 var(--body); color: var(--mist); margin-bottom: 0; }
+.cheat .fix b { color: var(--chalk); font-weight: 500; }
+
+/* ---------- end ---------- */
+.ends { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.ends a { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--line); padding: 11px 16px; font: 500 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; text-decoration: none; transition: border-color .15s, background .15s; }
+.ends a:hover { border-color: var(--chalk); background: rgba(157, 183, 207, .08); }
+.ends a::after { content: "\2192"; color: var(--sodium); }
+footer { padding: 30px 0 48px; font: 400 12px/1.8 var(--mono); color: var(--mist); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 30px; }
+:focus-visible { outline: 2px solid var(--sodium); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { #hero-canvas { opacity: 1; } }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <canvas id="hero-canvas" aria-label="A simulated eight-legged spider walking down a staircase"></canvas>
+  <div class="hero-text">
+    <div class="eyebrow">Reinforcement learning in Genesis</div>
+    <h1>Arachne<br>scandens</h1>
+    <p class="sub">Teaching an eight-legged robot to climb stairs.</p>
+  </div>
+  <div class="hero-foot">
+    <span id="hero-cap">12 cm steps &middot; 78% of its standing height</span>
+    <span class="muted">Real replay &middot; trained policy &middot; no exploration noise</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="lede-block">
+    <p class="lede">Eight legs, 24 motors, and a staircase it has never seen. Nobody told it how to walk. This is what it worked out, and the two ways it cheated first.</p>
+  </div>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>The task</b>A spider is dropped onto a tile of stairs and given one instruction: walk that way. Everything between the instruction and the motion is learned.</p></div>
+      <div class="flow">
+        <h2>Walking is easy. Stairs are not.</h2>
+        <p>Flat-ground walking is close to a solved problem in simulation. A policy finds a rhythm, the rhythm holds, and nothing in the world argues with it. Stairs break that. The ground stops being a plane and becomes a sequence of decisions: this foot clears the riser, that one does not, and the body has to pitch to let the back legs follow.</p>
+        <p>Eight legs make the problem both easier and harder. Easier because the spider is statically stable almost all the time, so a bad step rarely ends the episode. Harder because there are 24 joints to coordinate instead of 12, eight contact points arguing with each other, and a much larger space of gaits that technically work but look nothing like walking.</p>
+        <p>The tallest step here is 12 cm against a standing height of 15.4 cm. For a person of average height, that is a staircase with steps a little over a metre tall.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>The animal</b>Generated from a parameter spec rather than modelled by hand, so leg count, segment lengths and masses are all variables.</p></div>
+      <div class="flow">
+        <h2>Building the spider</h2>
+        <p>The body is an ellipsoid with an abdomen behind it, and each of the eight legs is a three-link chain: a hip that swings the leg fore and aft, a hip that lifts it, and a knee that folds the shin. The resting pose holds the knees above the body, which is the detail that makes stair climbing possible at all. A leg with its knee below the body can only push; a leg with its knee above can reach.</p>
+        <figure>
+          <div class="plate"><canvas id="anatomy" aria-label="Top view of the spider showing eight legs labelled L1 to L4 and R1 to R4"></canvas></div>
+          <figcaption>Seen from above, head to the right. Eight legs, three joints each.</figcaption>
+        </figure>
+        <dl class="specimen">
+          <div><dt>Mass</dt><dd class="mono" id="s-mass">&ndash;</dd></div>
+          <div><dt>Standing height</dt><dd class="mono" id="s-height">&ndash;</dd></div>
+          <div><dt>Leg span</dt><dd class="mono" id="s-span">&ndash;</dd></div>
+          <div><dt>Joints</dt><dd class="mono">24</dd></div>
+        </dl>
+        <p style="margin-top:22px">The policy does not command torques directly. It outputs 24 joint angles fifty times a second, and a position controller running at 200 Hz chases them. That split matters: the policy works in a space where a sensible output looks like a pose, not like a set of forces, and the controller absorbs the physics in between.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>The terrain</b>Steps are square rings around a central platform, so a spider walking out in any direction meets a staircase, and diagonal headings cross the corners.</p></div>
+      <div class="flow">
+        <h2>A staircase that cannot be dodged</h2>
+        <p>Each training tile is six metres square with a flat platform at its centre. Half the tiles are pits: the spider starts at the bottom and has to climb out. The other half are pyramids, where it starts on the summit and has to come down. Descending turns out to be a genuinely different skill, and the policy learns it first.</p>
+        <p>At the start of every episode the spider gets a random heading and a random speed between 0.25 and 0.6 m/s. Because the steps are concentric, there is no direction that avoids them, and no gait that works only when the stairs are straight ahead.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>The curriculum</b>Difficulty is not scheduled by iteration count. It follows what each spider can actually do.</p></div>
+      <div class="flow">
+        <h2>Let the stairs grow</h2>
+        <p>Dropping a fresh policy onto 12 cm steps teaches it nothing except how to fall over. So the tiles are arranged into levels, from 2 cm steps up to 12 cm, and every spider keeps its own position in that ladder. Finish a staircase and it moves up a level. Fail to get halfway and it moves down. Spiders that clear the hardest level are recycled to a random one, so the population never abandons the easy stairs entirely.</p>
+        <p>The useful property is that difficulty tracks ability per spider rather than per run. At any moment the population is spread across the ladder, and the average level is a far better progress signal than reward, which actually falls as the stairs get harder.</p>
+        <figure>
+          <div class="plate"><canvas id="ladder" aria-label="Bar chart of the share of spiders at each step height"></canvas></div>
+          <figcaption>Where the population sat at the end of the demo run. Nearly a quarter had reached the tallest stairs.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>The interesting part</b>Both failures looked like success in every training curve. Both were only visible in replay.</p></div>
+      <div class="flow">
+        <h2>Two ways it cheated</h2>
+        <p>Reward functions for legged robots are usually inherited rather than derived, and the standard set is tuned for quadrupeds that run at a metre per second. This spider walks at about a third of that, and the mismatch produced two failures that a training curve cannot show you.</p>
+
+        <div class="cheat">
+          <h3>It learned to stand still</h3>
+          <p>Velocity tracking is normally rewarded with a Gaussian kernel around the commanded speed. With the standard width, a spider commanded to walk at 0.3 m/s and standing perfectly motionless still collected between 53 and 78 per cent of the available reward. Walking is expensive and risky; standing is free. The policy found that out in a few hundred iterations.</p>
+          <p class="fix"><b>Fix.</b> A kernel five times tighter, plus a dense term that pays for the fraction of commanded speed actually achieved, so that standing still scores zero rather than most of the points.</p>
+        </div>
+
+        <div class="cheat">
+          <h3>It learned to vibrate</h3>
+          <p>The second policy reported 81 per cent of episodes finishing their staircase. Switch the exploration noise off, as you would at deployment, and the spider moved at 0.01 m/s. It had not learned to walk. It had learned that random jitter applied to 24 joints will ratchet a light eight-legged body along on friction, and the noise injected during training was doing the walking for it. The policy's own contribution was to hold a pose that made the jitter productive.</p>
+          <p class="fix"><b>Fix.</b> A penalty on any foot that slides while it is in contact with the ground. Ratcheting requires planted feet to slip, so pricing that behaviour removed the exploit, and a real alternating gait appeared in its place.</p>
+        </div>
+
+        <p>The lesson is cheap to state and expensive to learn: evaluate the deterministic policy, not the training statistics. A number that goes up is not evidence of the behaviour you wanted.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>The run</b>256 spiders, 500 iterations, about 3 million simulated steps, on two CPU cores. Roughly one per cent of the planned training budget.</p></div>
+      <div class="flow">
+        <h2>Where it stands</h2>
+        <p>The results below come from the small demo run, which exists to prove the pipeline rather than to solve the task. During training, with exploration noise on, 83 per cent of episodes finished their staircase. Evaluated properly, one attempt per staircase with the noise off, the picture is more modest.</p>
+        <table>
+          <thead><tr><th>Staircase</th><th>Steps</th><th>Result</th><th class="r">Time</th></tr></thead>
+          <tbody id="results"></tbody>
+        </table>
+        <p style="margin-top:20px">Three of the four descents finished, including the tallest stairs. Not one ascent did. That split is not surprising: going down, gravity helps and the spider mostly has to avoid falling, while going up it has to lift its whole mass over a riser nearly as tall as it stands, eight times per step. The odd result is the 5.5 cm descent, where the spider sat on the summit and never committed to the first step down, which is the kind of local optimum more training usually clears.</p>
+        <p>What the run does establish is that the gait is real. The footfall pattern below comes from the hero replay at the top of this page.</p>
+        <figure>
+          <div class="plate"><canvas id="gait" aria-label="Footfall diagram showing which of the eight feet are on the ground over time"></canvas></div>
+          <figcaption>Each bar is one foot on the ground. Left legs above the line, right legs below. Overlapping but offset: legs swing in groups rather than together.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div class="aside"><p class="note"><b>Next</b>The full run has not been attempted. It needs a GPU and roughly a hundred times the compute used here.</p></div>
+      <div class="flow">
+        <h2>What is left</h2>
+        <p>The immediate step is the full training run: 4096 spiders instead of 256, 3000 iterations instead of 500. The demo saturates long before the policy has seen enough of the hard stairs to solve them, and the curriculum data suggests the population was still climbing when it stopped.</p>
+        <p>After that, two changes worth trying. A foot-clearance reward tied to the height of the next riser, which would attack the ascent failure directly rather than hoping the policy discovers clearance on its own. And removing the terrain scan from the policy's observations, so that it has to feel the stairs through joint feedback instead of being handed a height map. The second is the harder and more interesting problem, because it is the one a real robot faces.</p>
+        <div class="ends">
+          <a href="demo.html">Open the dashboard</a>
+          <a href="https://github.com/tinySage/spider-stairs">Source on GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Built with Genesis, PyTorch and rsl-rl.</span>
+    <span>&copy; 2026 Muktanan Mohapatra. All rights reserved.</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+const D = /*__DATA__*/null;
+const C = { deep: "#081a31", chalk: "#eaf2f8", mist: "#9db7cf", sodium: "#ffcf3a", line: "#2b507d" };
+const $ = (id) => document.getElementById(id);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const cm = (m) => String(Number((m * 100).toFixed(1)));
+
+function fit(canvas) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), r = canvas.getBoundingClientRect();
+  const w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+  if (canvas.width !== w * dpr || canvas.height !== h * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return [ctx, w, h];
+}
+const lerp = (a, b, t) => a + (b - a) * t;
+const mix = (c1, c2, t) => { const p = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)); const a = p(c1), b = p(c2); return `rgb(${a.map((v, i) => Math.round(lerp(v, b[i], t))).join(",")})`; };
+
+/* ---- kinematics, mirroring spider_stairs/robot.py ---- */
+function qrot(q, v) {
+  const [w, x, y, z] = q, [vx, vy, vz] = v;
+  const tx = 2 * (y * vz - z * vy), ty = 2 * (z * vx - x * vz), tz = 2 * (x * vy - y * vx);
+  return [vx + w * tx + (y * tz - z * ty), vy + w * ty + (z * tx - x * tz), vz + w * tz + (x * ty - y * tx)];
+}
+function legPoints(R, pos, quat, q) {
+  const [a, b] = R.mount_ellipse, cl = R.coxa[0], fl = R.femur[0], tl = R.tibia[0], out = [];
+  for (let s = 0; s < 2; s++) for (let i = 0; i < 4; i++) {
+    const sign = s === 0 ? 1 : -1, ang = sign * R.mount_angles_deg[i] * Math.PI / 180, j = (s * 4 + i) * 3;
+    const yaw = ang - sign * q[j], dx = Math.cos(yaw), dy = Math.sin(yaw), f = q[j + 1], t = f + q[j + 2];
+    const p0 = [a * Math.cos(ang), b * Math.sin(ang), 0];
+    const p1 = [p0[0] + cl * dx, p0[1] + cl * dy, 0];
+    const p2 = [p1[0] + fl * Math.cos(f) * dx, p1[1] + fl * Math.cos(f) * dy, -fl * Math.sin(f)];
+    const p3 = [p2[0] + tl * Math.cos(t) * dx, p2[1] + tl * Math.cos(t) * dy, p2[2] - tl * Math.sin(t)];
+    out.push([p0, p1, p2, p3].map((p) => { const w = qrot(quat, p); return [w[0] + pos[0], w[1] + pos[1], w[2] + pos[2]]; }));
+  }
+  return out;
+}
+function ellipsoidHull(ctx, P, center, radii, quat, pos) {
+  const pts = [];
+  for (let i = 0; i <= 9; i++) for (let k = 0; k < 18; k++) {
+    const th = Math.PI * i / 9, ph = Math.PI * k / 9;
+    const l = [center[0] + radii[0] * Math.sin(th) * Math.cos(ph), center[1] + radii[1] * Math.sin(th) * Math.sin(ph), center[2] + radii[2] * Math.cos(th)];
+    const w = qrot(quat, l); pts.push(P([w[0] + pos[0], w[1] + pos[1], w[2] + pos[2]]));
+  }
+  pts.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const p of pts) { while (lo.length > 1 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (const p of pts.reverse()) { while (up.length > 1 && cross(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  const hl = lo.slice(0, -1).concat(up.slice(0, -1));
+  ctx.beginPath(); hl.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath();
+  ctx.fillStyle = "#0a2242"; ctx.fill(); ctx.strokeStyle = C.chalk; ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.strokeStyle = "rgba(234,242,248,.4)"; ctx.lineWidth = 1;
+  for (const plane of [0, 1]) { ctx.beginPath(); for (let i = 0; i <= 32; i++) { const a = i / 32 * 2 * Math.PI;
+    const l = plane === 0 ? [radii[0] * Math.cos(a), 0, radii[2] * Math.sin(a)] : [0, radii[1] * Math.cos(a), radii[2] * Math.sin(a)];
+    const w = qrot(quat, [l[0] + center[0], l[1] + center[1], l[2] + center[2]]), p = P([w[0] + pos[0], w[1] + pos[1], w[2] + pos[2]]);
+    i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); } ctx.stroke(); }
+}
+
+/* ---- hero: the recorded descent, drawn on its staircase ---- */
+const roll = D.rollout, T = D.terrain, R = D.robot;
+const H = { t: 0, hold: 0 };
+const START = 0.44;  // fraction of the replay to open on: partway down, where the steps read
+function frameAt(t) {
+  const n = roll.pos.length, x = Math.max(0, Math.min(n - 1, t / roll.frame_dt));
+  const i = Math.max(0, Math.min(n - 2, Math.floor(x))), u = n > 1 ? x - i : 0, j = Math.min(n - 1, i + 1);
+  const L = (A) => A[i].map((v, k) => lerp(v, A[j][k], u));
+  let qa = roll.quat[i], qb = roll.quat[j];
+  if (qa[0] * qb[0] + qa[1] * qb[1] + qa[2] * qb[2] + qa[3] * qb[3] < 0) qb = qb.map((v) => -v);
+  let quat = qa.map((v, k) => lerp(v, qb[k], u)); const nn = Math.hypot(...quat);
+  return { pos: L(roll.pos), quat: quat.map((v) => v / nn), q: L(roll.q), contact: roll.contact[u < 0.5 ? i : j], idx: u < 0.5 ? i : j };
+}
+const duration = () => (roll.pos.length - 1) * roll.frame_dt;
+function stairZ(cheb) {
+  const h = T.step_height, k = Math.max(0, Math.min(T.n_steps, Math.ceil((cheb - T.platform_half) / T.step_depth - 1e-6)));
+  return (T.n_steps - k) * h;  // pyramid: summit at the centre
+}
+function drawHero() {
+  const [ctx, W, Ht] = fit($("hero-canvas"));
+  ctx.clearRect(0, 0, W, Ht);
+  const fr = frameAt(H.t), narrow = W < 760;
+  const tgt = [fr.pos[0], fr.pos[1], fr.pos[2]];
+  const yaw = -1.06, pitch = narrow ? 0.30 : 0.22, dist = narrow ? 2.5 : 2.1;
+  const cp = Math.cos(pitch), eye = [tgt[0] + dist * cp * Math.cos(yaw), tgt[1] + dist * cp * Math.sin(yaw), tgt[2] + dist * Math.sin(pitch)];
+  const f = [tgt[0] - eye[0], tgt[1] - eye[1], tgt[2] - eye[2]].map((v) => v / dist);
+  let r = [f[1], -f[0], 0]; const rl = Math.hypot(r[0], r[1]); r = [r[0] / rl, r[1] / rl, 0];
+  const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+  const F = Math.min(W, Ht * 1.6) * 0.95, cy = Ht * (narrow ? 0.72 : 0.70), cx = W * (narrow ? 0.5 : 0.62);
+  const P = (p) => { const d = [p[0] - eye[0], p[1] - eye[1], p[2] - eye[2]];
+    const z = Math.max(0.05, d[0] * f[0] + d[1] * f[1] + d[2] * f[2]);
+    return [cx + F * (d[0] * r[0] + d[1] * r[1]) / z, cy - F * (d[0] * u[0] + d[1] * u[1] + d[2] * u[2]) / z, z]; };
+
+  const half = T.tile_size / 2, n = T.n_steps, quads = [], zs = [];
+  for (let k = 0; k <= n; k++) zs.push(stairZ(k === 0 ? 0 : T.platform_half + (k - 0.5) * T.step_depth));
+  const zLo = Math.min(...zs), zHi = Math.max(...zs), shade = (z) => (zHi > zLo ? (z - zLo) / (zHi - zLo) : 0.5);
+  for (let k = 0; k <= n; k++) {
+    const ri = k === 0 ? 0 : T.platform_half + (k - 1) * T.step_depth, ro = k === n ? half : T.platform_half + k * T.step_depth, z = zs[k];
+    if (k === 0) quads.push({ pts: [[-ro, -ro, z], [ro, -ro, z], [ro, ro, z], [-ro, ro, z]], top: true, z });
+    else for (const [ax, sg] of [[0, 1], [0, -1], [1, 1], [1, -1]]) {
+      const m = (a, b) => (ax === 0 ? [sg * a, b, z] : [b, sg * a, z]);
+      quads.push({ pts: [m(ri, -ri), m(ro, -ro), m(ro, ro), m(ri, ri)], top: true, z });
+    }
+    if (k < n) {
+      const za = zs[k], zb = zs[k + 1], up = zb > za;
+      for (const [ax, sg] of [[0, 1], [0, -1], [1, 1], [1, -1]]) {
+        const m = (b, z) => (ax === 0 ? [sg * ro, b, z] : [b, sg * ro, z]);
+        const nrm = ax === 0 ? [up ? -sg : sg, 0, 0] : [0, up ? -sg : sg, 0], c = ax === 0 ? [sg * ro, 0, 0] : [0, sg * ro, 0];
+        if (nrm[0] * (eye[0] - c[0]) + nrm[1] * (eye[1] - c[1]) <= 0) continue;
+        quads.push({ pts: [m(-ro, za), m(ro, za), m(ro, zb), m(-ro, zb)], top: false, z: (za + zb) / 2 });
+      }
+    }
+  }
+  for (const q of quads) { q.s = q.pts.map(P); q.depth = q.s.reduce((a, p) => a + p[2], 0) / 4; }
+  quads.sort((a, b) => b.depth - a.depth);
+  ctx.lineJoin = "round";
+  for (const q of quads) {
+    ctx.beginPath(); q.s.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath();
+    ctx.fillStyle = q.top ? mix("#0a2140", "#1c467a", shade(q.z)) : mix("#06162b", "#12325a", shade(q.z));
+    ctx.fill(); ctx.strokeStyle = "rgba(234,242,248,.3)"; ctx.lineWidth = 1; ctx.stroke();
+  }
+  // footprints from the last four seconds
+  const win = Math.round(4 / roll.frame_dt);
+  for (let i = Math.max(1, fr.idx - win); i <= fr.idx; i++) for (let l = 0; l < 8; l++) {
+    if (((roll.contact[i] >> l) & 1) && !((roll.contact[i - 1] >> l) & 1)) {
+      const foot = legPoints(R, roll.pos[i], roll.quat[i], roll.q[i])[l][3], p = P(foot), age = (fr.idx - i) / win;
+      ctx.beginPath(); ctx.ellipse(p[0], p[1], Math.max(1.5, F * 0.018 / p[2]), Math.max(1, F * 0.018 / p[2] * Math.sin(pitch)), 0, 0, 7);
+      ctx.strokeStyle = `rgba(255,207,58,${0.7 * (1 - age)})`; ctx.lineWidth = 1.2; ctx.stroke();
+    }
+  }
+  // the spider
+  const legs = legPoints(R, fr.pos, fr.quat, fr.q).map((pts, l) => ({ s: pts.map(P), l })), bodyZ = P(fr.pos)[2];
+  const drawLeg = (leg) => {
+    const s = leg.s, px = (m, z) => Math.max(1.2, F * m / z), down = (fr.contact >> leg.l) & 1;
+    ctx.lineCap = "round"; ctx.strokeStyle = C.chalk;
+    [[0, 1, R.coxa[1]], [1, 2, R.femur[1]], [2, 3, R.tibia[1]]].forEach(([a, b, rad]) => {
+      ctx.beginPath(); ctx.moveTo(s[a][0], s[a][1]); ctx.lineTo(s[b][0], s[b][1]); ctx.lineWidth = px(rad * 2, (s[a][2] + s[b][2]) / 2); ctx.stroke(); });
+    for (const k of [1, 2]) { ctx.beginPath(); ctx.arc(s[k][0], s[k][1], px(0.017, s[k][2]), 0, 7); ctx.fillStyle = C.deep; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = C.chalk; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(s[3][0], s[3][1], px(R.foot_radius * 1.3, s[3][2]), 0, 7);
+    ctx.fillStyle = down ? C.sodium : C.deep; ctx.fill(); ctx.strokeStyle = down ? C.sodium : C.chalk; ctx.lineWidth = 1.3; ctx.stroke();
+  };
+  const mid = (leg) => (leg.s[0][2] + leg.s[2][2]) / 2;
+  legs.filter((l) => mid(l) >= bodyZ).sort((a, b) => mid(b) - mid(a)).forEach(drawLeg);
+  const abX = -(R.body_radii[0] + R.abdomen_half_len * 0.6), parts = [
+    { c: [abX, 0, 0.03], r: [R.abdomen_half_len + R.abdomen_radius, R.abdomen_radius, R.abdomen_radius] },
+    { c: [0, 0, 0], r: R.body_radii }];
+  parts.forEach((p) => { const w = qrot(fr.quat, p.c); p.d = P([w[0] + fr.pos[0], w[1] + fr.pos[1], w[2] + fr.pos[2]])[2]; });
+  parts.sort((a, b) => b.d - a.d).forEach((p) => ellipsoidHull(ctx, P, p.c, p.r, fr.quat, fr.pos));
+  legs.filter((l) => mid(l) < bodyZ).sort((a, b) => mid(b) - mid(a)).forEach(drawLeg);
+}
+
+/* ---- anatomy, top view ---- */
+function drawAnatomy() {
+  const [ctx, W, Ht] = fit($("anatomy")); ctx.clearRect(0, 0, W, Ht);
+  const dp = R.default_pose, q = []; for (let i = 0; i < 8; i++) q.push(dp.coxa, dp.femur, dp.tibia);
+  const legs = legPoints(R, [0, 0, 0], [1, 0, 0, 0], q), sc = Math.min(W / 0.88, Ht / 0.80);
+  const X = (p) => W / 2 + p[0] * sc, Y = (p) => Ht / 2 - p[1] * sc;
+  ctx.lineCap = "round"; ctx.font = "500 11px 'IBM Plex Mono', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  legs.forEach((l, i) => {
+    ctx.strokeStyle = C.chalk; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(l[0]), Y(l[0])); ctx.lineTo(X(l[2]), Y(l[2])); ctx.stroke();
+    ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(X(l[2]), Y(l[2])); ctx.lineTo(X(l[3]), Y(l[3])); ctx.stroke();
+    ctx.beginPath(); ctx.arc(X(l[3]), Y(l[3]), 5.5, 0, 7); ctx.fillStyle = C.deep; ctx.fill(); ctx.strokeStyle = C.chalk; ctx.lineWidth = 1.4; ctx.stroke();
+    const out = Math.hypot(l[3][0], l[3][1]), k = (out + 0.052) / out;
+    ctx.fillStyle = C.mist; ctx.fillText(R.legs[i], W / 2 + l[3][0] * k * sc, Ht / 2 - l[3][1] * k * sc);
+  });
+  const abX = -(R.body_radii[0] + R.abdomen_half_len * 0.6);
+  for (const [cx, rx, ry] of [[abX, R.abdomen_half_len + R.abdomen_radius, R.abdomen_radius], [0, R.body_radii[0], R.body_radii[1]]]) {
+    ctx.beginPath(); ctx.ellipse(W / 2 + cx * sc, Ht / 2, rx * sc, ry * sc, 0, 0, 7);
+    ctx.fillStyle = "#0a2242"; ctx.fill(); ctx.strokeStyle = C.chalk; ctx.lineWidth = 1.5; ctx.stroke(); }
+}
+
+/* ---- curriculum ladder ---- */
+function drawLadder() {
+  const [ctx, W, Ht] = fit($("ladder")); ctx.clearRect(0, 0, W, Ht);
+  const hs = D.curriculum.step_heights, pop = D.curriculum.population, n = hs.length;
+  const padL = 48, padR = 10, padB = 26, treadW = (W - padL - padR) / n, base = Ht - padB;
+  const total = hs.reduce((a, b) => a + b, 0), s = (Ht * 0.34) / Math.max(total, 0.2);
+  const maxPop = Math.max(0.01, ...pop), barMax = Ht * 0.42, tops = [];
+  ctx.beginPath(); ctx.moveTo(padL, base); let y = base;
+  for (let l = 0; l < n; l++) { y -= hs[l] * s; ctx.lineTo(padL + l * treadW, y); ctx.lineTo(padL + (l + 1) * treadW, y); tops.push(y); }
+  ctx.lineTo(W - padR, base); ctx.closePath();
+  ctx.fillStyle = "rgba(21,53,91,.7)"; ctx.fill(); ctx.strokeStyle = C.chalk; ctx.lineWidth = 1.2; ctx.stroke();
+  const sh = D.robot.stand_height * s;
+  ctx.strokeStyle = C.sodium; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(20, base); ctx.lineTo(20, base - sh); ctx.moveTo(15, base); ctx.lineTo(25, base); ctx.moveTo(15, base - sh); ctx.lineTo(25, base - sh); ctx.stroke();
+  ctx.save(); ctx.translate(11, base - sh / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = C.sodium; ctx.font = "400 10px 'IBM Plex Mono', monospace"; ctx.textAlign = "center"; ctx.fillText("spider", 0, 0); ctx.restore();
+  ctx.textAlign = "center";
+  for (let l = 0; l < n; l++) {
+    const cx = padL + (l + 0.5) * treadW, bh = barMax * pop[l] / maxPop, bw = Math.min(38, treadW * 0.5);
+    ctx.fillStyle = C.chalk; ctx.fillRect(cx - bw / 2, tops[l] - bh, bw, bh);
+    ctx.font = "500 11.5px 'IBM Plex Mono', monospace"; ctx.fillText(Math.round(pop[l] * 100) + "%", cx, tops[l] - bh - 7);
+    ctx.fillStyle = C.mist; ctx.font = "400 11px 'IBM Plex Mono', monospace"; ctx.fillText(cm(hs[l]) + " cm", cx, Ht - 8);
+  }
+}
+
+/* ---- footfall ---- */
+function drawGait() {
+  const [ctx, W, Ht] = fit($("gait")); ctx.clearRect(0, 0, W, Ht);
+  const padL = 32, padB = 20, rowH = (Ht - padB) / 8, x0 = padL, x1 = W - 4, c = roll.contact, n = c.length;
+  ctx.font = "500 10.5px 'IBM Plex Mono', monospace"; ctx.textBaseline = "middle";
+  for (let l = 0; l < 8; l++) {
+    ctx.fillStyle = C.mist; ctx.textAlign = "left"; ctx.fillText(R.legs[l], 0, l * rowH + rowH / 2);
+    ctx.fillStyle = "rgba(21,53,91,.55)"; ctx.fillRect(x0, l * rowH + 3, x1 - x0, rowH - 6);
+  }
+  ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(x0, 4 * rowH); ctx.lineTo(x1, 4 * rowH); ctx.stroke();
+  const X = (i) => x0 + (x1 - x0) * i / Math.max(1, n - 1);
+  for (let l = 0; l < 8; l++) { let start = -1;
+    for (let i = 0; i <= n; i++) { const on = i < n && ((c[i] >> l) & 1);
+      if (on && start < 0) start = i;
+      if (!on && start >= 0) { ctx.fillStyle = C.chalk; ctx.fillRect(X(start), l * rowH + 5, Math.max(1, X(i - 1) - X(start) + (x1 - x0) / n), rowH - 10); start = -1; } } }
+  const dur = duration(); ctx.fillStyle = C.mist; ctx.textBaseline = "alphabetic"; ctx.font = "400 10px 'IBM Plex Mono', monospace";
+  for (let t = 0; t <= dur + 1e-6; t += 2) { const x = x0 + (x1 - x0) * t / dur;
+    ctx.textAlign = t === 0 ? "left" : x > x1 - 14 ? "right" : "center"; ctx.fillText(t + " s", x, Ht - 4);
+    ctx.fillStyle = C.line; ctx.fillRect(x, Ht - padB, 1, 4); ctx.fillStyle = C.mist; }
+  const px = X(Math.min(n - 1, Math.round(H.t / roll.frame_dt)));
+  ctx.fillStyle = C.sodium; ctx.fillRect(px - 1, 0, 2, Ht - padB);
+}
+
+/* ---- text filled from the data ---- */
+function fillText() {
+  const legM = R.coxa[2] + R.femur[2] + R.tibia[2] + R.foot_mass, mass = R.body_mass + R.abdomen_mass + 8 * legM;
+  const dp = R.default_pose, q = []; for (let i = 0; i < 8; i++) q.push(dp.coxa, dp.femur, dp.tibia);
+  const feet = legPoints(R, [0, 0, 0], [1, 0, 0, 0], q).map((l) => l[3]);
+  const span = 2 * Math.max(...feet.map((f) => Math.abs(f[1])));
+  $("s-mass").innerHTML = mass.toFixed(1) + '<small>kg</small>';
+  $("s-height").innerHTML = cm(R.stand_height) + '<small>cm</small>';
+  $("s-span").innerHTML = cm(span) + '<small>cm</small>';
+  $("hero-cap").textContent = `${cm(T.step_height)} cm steps · ${Math.round(T.step_height / R.stand_height * 100)}% of its standing height`;
+  $("results").innerHTML = D.results.map((r) => {
+    const ok = r.outcome === "climbed";
+    return `<tr><td>${r.tile === "ascend" ? "Up" : "Down"}</td><td class="n">${cm(r.step_height)} cm</td>
+      <td><span class="tag ${ok ? "ok" : "no"}">${ok ? "Finished" : "Ran out of time"}</span></td>
+      <td class="n r">${ok ? r.seconds.toFixed(1) + " s" : "—"}</td></tr>`; }).join("");
+}
+
+let prev = performance.now();
+function tick(now) {
+  const dt = Math.min(0.1, (now - prev) / 1000); prev = now;
+  const dur = duration();
+  if (H.t >= dur) { H.hold += dt; if (H.hold > 1.8) { H.t = 0; H.hold = 0; } }
+  else H.t = Math.min(dur, H.t + dt * 0.85);
+  drawHero(); drawGait();
+  requestAnimationFrame(tick);
+}
+
+fillText(); drawAnatomy(); drawLadder();
+H.t = duration() * START;
+if (reduceMotion) { drawHero(); drawGait(); }
+else requestAnimationFrame(tick);
+new ResizeObserver(() => { drawHero(); drawAnatomy(); drawLadder(); drawGait(); }).observe(document.body);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawAnatomy(); drawLadder(); drawGait(); });
+</script>
+</body>
+</html>
